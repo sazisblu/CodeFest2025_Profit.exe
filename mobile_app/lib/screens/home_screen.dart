@@ -5,8 +5,9 @@ import '../models/post_model.dart';
 import '../services/post_service.dart';
 import '../widgets/custom_app_bar.dart';
 import 'create_post_screen.dart';
-import '../models/comment_model.dart';
+import '../models/thread_model.dart';
 import '../services/auth_service.dart';
+import '../widgets/x_style_thread_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -231,13 +232,13 @@ class PostCard extends StatefulWidget {
 
 class _PostCardState extends State<PostCard> {
   late int likeCount;
-  late int commentCount;
+  late int threadCount;
   bool hasLiked = false;
   bool isProcessingLike = false;
-  List<CommentModel> comments = [];
-  bool loadingComments = false;
-  bool showCommentInput = false;
-  final _commentController = TextEditingController();
+  List<ThreadModel> threads = [];
+  bool loadingThreads = false;
+  bool showThreadInput = false;
+  final _threadController = TextEditingController();
   final PostService _postService = PostService();
   final AuthService _authService = AuthService();
 
@@ -245,9 +246,9 @@ class _PostCardState extends State<PostCard> {
   void initState() {
     super.initState();
     likeCount = widget.post.likes;
-    commentCount = widget.post.commentsCount;
+    threadCount = widget.post.threadsCount;
     _checkIfLiked();
-    _fetchComments();
+    _fetchThreads();
   }
 
   Future<void> _checkIfLiked() async {
@@ -260,16 +261,16 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
-  Future<void> _fetchComments() async {
+  Future<void> _fetchThreads() async {
     if (mounted) {
       setState(() {
-        loadingComments = true;
+        loadingThreads = true;
       });
     }
-    comments = await _postService.getComments(widget.post.id);
+    threads = await _postService.getThreads(widget.post.id);
     if (mounted) {
       setState(() {
-        loadingComments = false;
+        loadingThreads = false;
       });
     }
   }
@@ -328,23 +329,23 @@ class _PostCardState extends State<PostCard> {
     }
   }
 
-  Future<void> _addComment() async {
+  Future<void> _addThread() async {
     final user = _authService.currentUser;
-    if (user == null || _commentController.text.trim().isEmpty) return;
+    if (user == null || _threadController.text.trim().isEmpty) return;
 
     try {
-      await _postService.addComment(
+      await _postService.addThread(
         postId: widget.post.id,
         userId: user.id,
-        comment: _commentController.text.trim(),
+        content: _threadController.text.trim(),
       );
 
-      _commentController.clear();
-      await _fetchComments();
+      _threadController.clear();
+      await _fetchThreads();
 
       if (mounted) {
         setState(() {
-          commentCount++;
+          threadCount++;
         });
       }
 
@@ -354,14 +355,14 @@ class _PostCardState extends State<PostCard> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Error adding comment: $e')));
+        ).showSnackBar(SnackBar(content: Text('Error adding thread: $e')));
       }
     }
   }
 
   @override
   void dispose() {
-    _commentController.dispose();
+    _threadController.dispose();
     super.dispose();
   }
 
@@ -596,11 +597,11 @@ class _PostCardState extends State<PostCard> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Comment button
+              // Thread button
               GestureDetector(
                 onTap: () {
                   setState(() {
-                    showCommentInput = !showCommentInput;
+                    showThreadInput = !showThreadInput;
                   });
                 },
                 child: Container(
@@ -611,7 +612,7 @@ class _PostCardState extends State<PostCard> {
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
-                    Icons.mode_comment_outlined,
+                    Icons.chat_bubble_outline,
                     color: Color(0xFF2E4F99),
                     size: 20,
                   ),
@@ -633,117 +634,82 @@ class _PostCardState extends State<PostCard> {
                 ),
               ),
               const Spacer(),
-              // Comments and shares count
+              // Threads count
               Text(
-                '$commentCount comments',
+                '$threadCount threads',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Comments section
-          if (loadingComments)
-            const Center(child: CircularProgressIndicator())
-          else ...[
-            for (final comment in comments)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [Colors.green, Colors.teal],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: comment.userPhotoUrl != null
-                          ? ClipOval(
-                              child: Image.network(
-                                comment.userPhotoUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 20,
-                                  );
-                                },
-                              ),
-                            )
-                          : const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            comment.userDisplayName ?? 'User',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1a1a1a),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            comment.comment,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF333333),
-                              height: 1.3,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatDate(comment.createdAt),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF999999),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-          // Add comment input (only show when comment icon is clicked)
-          if (showCommentInput) ...[
-            const SizedBox(height: 12),
+          // Add thread input (show at top when thread icon is clicked)
+          if (showThreadInput) ...[
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    decoration: const InputDecoration(
-                      hintText: 'Add a comment...',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F5F5),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFFE0E0E0),
                       ),
+                    ),
+                    child: TextField(
+                      controller: _threadController,
+                      decoration: const InputDecoration(
+                        hintText: 'Post your reply...',
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        hintStyle: TextStyle(
+                          color: Color(0xFF999999),
+                          fontSize: 14,
+                        ),
+                      ),
+                      maxLines: null,
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Color(0xFF2E4F99)),
-                  onPressed: _addComment,
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _addThread,
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF2E4F99),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.send,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+          ],
+
+          // Threads section with X-style UI
+          if (loadingThreads)
+            const Center(child: CircularProgressIndicator())
+          else ...[
+            for (final thread in threads)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: XStyleThreadWidget(
+                  thread: thread,
+                  onUpdate: () {
+                    _fetchThreads();
+                    widget.onLike();
+                  },
+                ),
+              ),
           ],
         ],
       ),

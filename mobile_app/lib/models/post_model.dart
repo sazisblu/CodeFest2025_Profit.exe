@@ -9,7 +9,7 @@ class PostModel {
   final String? tagId;
   final String? imageUrl;
   final int likes;
-  final int commentsCount;
+  final int threadsCount;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -29,7 +29,7 @@ class PostModel {
     this.tagId,
     this.imageUrl,
     this.likes = 0,
-    this.commentsCount = 0,
+    this.threadsCount = 0,
     required this.createdAt,
     this.updatedAt,
     this.userDisplayName,
@@ -59,7 +59,7 @@ class PostModel {
       userDisplayName: json['user_display_name'] as String?,
       userPhotoUrl: json['user_photo_url'] as String?,
       tag: tagModel,
-      commentsCount: json['comments_count'] as int? ?? 0,
+      threadsCount: json['threads_count'] as int? ?? 0,
     );
   }
 
@@ -73,7 +73,7 @@ class PostModel {
       'tag_id': tagId,
       'image_url': imageUrl,
       'likes': likes,
-      'comments_count': commentsCount,
+      'threads_count': threadsCount,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };

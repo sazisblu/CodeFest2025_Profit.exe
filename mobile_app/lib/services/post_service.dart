@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/post_model.dart';
-import '../models/comment_model.dart';
+import '../models/thread_model.dart';
 
 class PostService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -57,7 +57,7 @@ class PostService {
             'tag_id': tagId,
             'image_url': imageUrl,
             'likes_count': 0,
-            'comments_count': 0,
+            'threads_count': 0,
             'created_at': DateTime.now().toIso8601String(),
           })
           .select()
@@ -85,16 +85,16 @@ class PostService {
       return (response as List).map((post) {
         final userData = post['users'];
 
-        // Use the likes_count and comments_count directly from posts table
+        // Use the likes_count and threads_count directly from posts table
         final likesCount = post['likes_count'] as int? ?? 0;
-        final commentsCount = post['comments_count'] as int? ?? 0;
+        final threadsCount = post['threads_count'] as int? ?? 0;
 
         return PostModel.fromJson({
           ...post,
           'user_display_name': userData['display_name'],
           'user_photo_url': userData['photo_url'],
           'likes_count': likesCount,
-          'comments_count': commentsCount,
+          'threads_count': threadsCount,
         });
       }).toList();
     } catch (e) {
@@ -186,53 +186,164 @@ class PostService {
     }
   }
 
-  // Fetch comments for a post
-  Future<List<CommentModel>> getComments(String postId) async {
-    final response = await _supabase
-        .from('post_comments')
-        .select('*, users(display_name, photo_url)')
-        .eq('post_id', postId)
-        .order('created_at', ascending: true);
-    return (response as List).map((c) {
-      return CommentModel.fromJson({
-        ...c,
-        'user_display_name': c['users']?['display_name'],
-        'user_photo_url': c['users']?['photo_url'],
-      });
-    }).toList();
+  // Fetch threads for a post (with nested structure)
+  Future<List<ThreadModel>> getThreads(String postId) async {
+    try {
+      // Get all threads for this post
+      final response = await _supabase
+          .from('post_threads')
+          .select('*, users(display_name, photo_url)')
+          .eq('post_id', postId)
+          .order('created_at', ascending: true);
+
+      final allThreads = (response as List).map((t) {
+        return ThreadModel.fromJson({
+          ...t,
+          'user_display_name': t['users']?['display_name'],
+          'user_photo_url': t['users']?['photo_url'],
+        });
+      }).toList();
+
+      // Build nested structure: separate top-level threads from replies
+      final topLevelThreads = allThreads
+          .where((t) => t.parentThreadId == null)
+          .toList();
+
+      final repliesMap = <String, List<ThreadModel>>{};
+      for (var thread in allThreads) {
+        if (thread.parentThreadId != null) {
+          repliesMap.putIfAbsent(thread.parentThreadId!, () => []);
+          repliesMap[thread.parentThreadId]!.add(thread);
+        }
+      }
+
+      // Attach replies to their parent threads
+      return topLevelThreads.map((thread) {
+        return thread.copyWith(
+          replies: repliesMap[thread.id] ?? [],
+        );
+      }).toList();
+    } catch (e) {
+      print('Error fetching threads: $e');
+      return [];
+    }
   }
 
-  // Add a comment to a post
-  Future<void> addComment({
+  // Add a thread to a post
+  Future<void> addThread({
     required String postId,
     required String userId,
-    required String comment,
+    required String content,
+    String? parentThreadId, // null for top-level thread
   }) async {
     try {
-      // Add comment record
-      await _supabase.from('post_comments').insert({
+      // Add thread record
+      await _supabase.from('post_threads').insert({
         'post_id': postId,
         'user_id': userId,
-        'comment': comment,
+        'content': content,
+        'parent_thread_id': parentThreadId,
+        'likes_count': 0,
+        'replies_count': 0,
         'created_at': DateTime.now().toIso8601String(),
       });
 
-      // Count actual comments and update the post
-      final commentsResponse = await _supabase
-          .from('post_comments')
-          .select()
-          .eq('post_id', postId);
+      // If this is a reply, update parent's reply count
+      if (parentThreadId != null) {
+        final repliesResponse = await _supabase
+            .from('post_threads')
+            .select()
+            .eq('parent_thread_id', parentThreadId);
 
-      final actualCommentsCount = (commentsResponse as List).length;
+        final repliesCount = (repliesResponse as List).length;
+
+        await _supabase
+            .from('post_threads')
+            .update({'replies_count': repliesCount})
+            .eq('id', parentThreadId);
+      }
+
+      // Count actual top-level threads and update the post
+      final threadsResponse = await _supabase
+          .from('post_threads')
+          .select()
+          .eq('post_id', postId)
+          .isFilter('parent_thread_id', null);
+
+      final actualThreadsCount = (threadsResponse as List).length;
 
       // Update the posts table with actual count
       await _supabase
           .from('posts')
-          .update({'comments_count': actualCommentsCount})
+          .update({'threads_count': actualThreadsCount})
           .eq('id', postId);
     } catch (e) {
-      print('Error adding comment: $e');
+      print('Error adding thread: $e');
       rethrow;
+    }
+  }
+
+  // Toggle like on a thread
+  Future<bool> toggleThreadLike(String threadId, String userId) async {
+    try {
+      // Check if user already liked this thread
+      final existingLike = await _supabase
+          .from('post_thread_likes')
+          .select()
+          .eq('thread_id', threadId)
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      bool wasLiked = existingLike != null;
+
+      if (wasLiked) {
+        // Unlike: Remove the like
+        await _supabase
+            .from('post_thread_likes')
+            .delete()
+            .eq('thread_id', threadId)
+            .eq('user_id', userId);
+      } else {
+        // Like: Add the like
+        await _supabase.from('post_thread_likes').insert({
+          'thread_id': threadId,
+          'user_id': userId,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+
+      // Count actual likes and update the thread
+      final likesResponse = await _supabase
+          .from('post_thread_likes')
+          .select('id')
+          .eq('thread_id', threadId);
+
+      final actualLikesCount = (likesResponse as List).length;
+
+      await _supabase
+          .from('post_threads')
+          .update({'likes_count': actualLikesCount})
+          .eq('id', threadId);
+
+      return !wasLiked;
+    } catch (e) {
+      throw Exception('Failed to toggle thread like: $e');
+    }
+  }
+
+  // Check if user liked a thread
+  Future<bool> hasUserLikedThread(String threadId, String userId) async {
+    try {
+      final result = await _supabase
+          .from('post_thread_likes')
+          .select('id')
+          .eq('thread_id', threadId)
+          .eq('user_id', userId)
+          .maybeSingle();
+      return result != null;
+    } catch (e) {
+      print('Error checking thread like status: $e');
+      return false;
     }
   }
 
