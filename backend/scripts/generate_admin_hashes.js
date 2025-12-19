@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 // Helper script to generate password hashes for admin users
 async function generatePasswordHashes() {
     const passwords = {
-        'blu123': await bcrypt.hash('admin123', 10),
+        'blu123': await bcrypt.hash('blu123', 10),
         'super123': await bcrypt.hash('super123', 10),
         'password123': await bcrypt.hash('password123', 10)
     };
