@@ -162,17 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         // Background gradient decoration
                         Container(
-                          height: 120,
-                          // decoration: BoxDecoration(
-                          //   gradient: LinearGradient(
-                          //     colors: [
-                          //       const Color(0xFF2E4F99).withOpacity(0.1),
-                          //       const Color(0xFF2E4F99).withOpacity(0.05),
-                          //     ],
-                          //     begin: Alignment.topLeft,
-                          //     end: Alignment.bottomRight,
-                          //   ),
-                          // ),
+                          height: 80,
                         ),
                       ],
                     ),
@@ -181,7 +171,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   // Profile Card
                   SliverToBoxAdapter(
                     child: Transform.translate(
-                      offset: const Offset(0, -60),
+                      offset: const Offset(0, -40),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Container(
@@ -426,7 +416,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   if (_userPosts.isNotEmpty)
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                         child: Text(
                           'My Posts (${_userPosts.length})',
                           style: const TextStyle(
