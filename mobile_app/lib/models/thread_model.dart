@@ -4,6 +4,7 @@ class ThreadModel {
   final String userId;
   final String? parentThreadId; // null for top-level threads
   final String content;
+  final String? imageUrl; // Image attached to the thread/comment
   final int likesCount;
   final int repliesCount;
   final DateTime createdAt;
@@ -19,6 +20,7 @@ class ThreadModel {
     required this.userId,
     this.parentThreadId,
     required this.content,
+    this.imageUrl,
     this.likesCount = 0,
     this.repliesCount = 0,
     required this.createdAt,
@@ -34,6 +36,7 @@ class ThreadModel {
       userId: json['user_id'] as String,
       parentThreadId: json['parent_thread_id'] as String?,
       content: json['content'] as String,
+      imageUrl: json['image_url'] as String?,
       likesCount: json['likes_count'] as int? ?? 0,
       repliesCount: json['replies_count'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -54,6 +57,7 @@ class ThreadModel {
       'user_id': userId,
       'parent_thread_id': parentThreadId,
       'content': content,
+      'image_url': imageUrl,
       'likes_count': likesCount,
       'replies_count': repliesCount,
       'created_at': createdAt.toIso8601String(),
@@ -67,6 +71,7 @@ class ThreadModel {
     String? userId,
     String? parentThreadId,
     String? content,
+    String? imageUrl,
     int? likesCount,
     int? repliesCount,
     DateTime? createdAt,
@@ -80,6 +85,7 @@ class ThreadModel {
       userId: userId ?? this.userId,
       parentThreadId: parentThreadId ?? this.parentThreadId,
       content: content ?? this.content,
+      imageUrl: imageUrl ?? this.imageUrl,
       likesCount: likesCount ?? this.likesCount,
       repliesCount: repliesCount ?? this.repliesCount,
       createdAt: createdAt ?? this.createdAt,

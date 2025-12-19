@@ -40,10 +40,26 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   List<TagModel> _availableTags = [];
 
   final List<Map<String, dynamic>> _feelings = [
-    {'label': 'Happy', 'icon': Icons.sentiment_satisfied_alt, 'color': Colors.amber},
-    {'label': 'Sad', 'icon': Icons.sentiment_dissatisfied, 'color': Colors.blue},
-    {'label': 'Angry', 'icon': Icons.sentiment_very_dissatisfied, 'color': Colors.red},
-    {'label': 'Frustrated', 'icon': Icons.sentiment_neutral, 'color': Colors.orange},
+    {
+      'label': 'Happy',
+      'icon': Icons.sentiment_satisfied_alt,
+      'color': Colors.amber,
+    },
+    {
+      'label': 'Sad',
+      'icon': Icons.sentiment_dissatisfied,
+      'color': Colors.blue,
+    },
+    {
+      'label': 'Angry',
+      'icon': Icons.sentiment_very_dissatisfied,
+      'color': Colors.red,
+    },
+    {
+      'label': 'Frustrated',
+      'icon': Icons.sentiment_neutral,
+      'color': Colors.orange,
+    },
     {'label': 'Excited', 'icon': Icons.emoji_emotions, 'color': Colors.green},
     {'label': 'Other', 'icon': Icons.sentiment_satisfied, 'color': Colors.grey},
   ];
@@ -68,10 +84,16 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     if (permission == LocationPermission.deniedForever) return;
 
     try {
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
       if (placemarks.isNotEmpty) {
-        String address = "${placemarks.first.street}, ${placemarks.first.locality}";
+        String address =
+            "${placemarks.first.street}, ${placemarks.first.locality}";
         setState(() {
           _locationController.text = address;
           _latitude = position.latitude;
@@ -199,13 +221,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    
+
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         systemOverlayStyle: SystemUiOverlayStyle.dark,
-        title: const Text('Create Post', 
-          style: TextStyle(fontWeight: FontWeight.w600)),
+        title: const Text(
+          'Create Post',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
@@ -273,7 +297,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
                   filled: true,
                   fillColor: Colors.white,
@@ -318,7 +345,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
                   filled: true,
                   fillColor: Colors.white,
@@ -338,7 +368,6 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ),
             const SizedBox(height: 24),
 
-
             // Location Section
             _buildSectionCard(
               title: 'Location',
@@ -357,7 +386,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: colorScheme.primary, width: 2),
+                    borderSide: BorderSide(
+                      color: colorScheme.primary,
+                      width: 2,
+                    ),
                   ),
                   filled: true,
                   fillColor: Colors.white,
@@ -434,11 +466,13 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text('Create Post', 
+                        const Text(
+                          'Create Post',
                           style: TextStyle(
-                            fontSize: 16, 
+                            fontSize: 16,
                             fontWeight: FontWeight.bold,
-                          )),
+                          ),
+                        ),
                       ],
                     ),
             ),
@@ -636,10 +670,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Visual evidence helps strengthen your Post',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -705,18 +736,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(
-                Icons.info_outline,
-                size: 16,
-                color: Colors.orange.shade600,
-              ),
+              Icon(Icons.info_outline, size: 16, color: Colors.orange.shade600),
               const SizedBox(width: 8),
               Text(
                 'Let us know how you feel!',
-                style: TextStyle(
-                  color: Colors.orange.shade600,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.orange.shade600, fontSize: 12),
               ),
             ],
           ),
@@ -771,7 +795,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
                 side: BorderSide(
-                  color: isSelected ? colorScheme.primary : Colors.grey.shade300,
+                  color: isSelected
+                      ? colorScheme.primary
+                      : Colors.grey.shade300,
                   width: isSelected ? 2 : 1,
                 ),
               ),
@@ -783,18 +809,11 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(
-                Icons.info_outline,
-                size: 16,
-                color: Colors.orange.shade600,
-              ),
+              Icon(Icons.info_outline, size: 16, color: Colors.orange.shade600),
               const SizedBox(width: 8),
               Text(
                 'Please select a category',
-                style: TextStyle(
-                  color: Colors.orange.shade600,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.orange.shade600, fontSize: 12),
               ),
             ],
           ),

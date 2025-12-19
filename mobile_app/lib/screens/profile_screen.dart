@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hamro_chautari/widgets/custom_app_bar.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../models/user_model.dart';
 import '../models/user_stats_model.dart';
 import '../models/post_model.dart';
@@ -571,6 +573,9 @@ class _PostCardState extends State<PostCard>
   final _threadController = TextEditingController();
   final PostService _postService = PostService();
   final AuthService _authService = AuthService();
+  final ImagePicker _picker = ImagePicker();
+  File? _selectedThreadImage;
+  bool _isAddingThread = false;
 
   // Animation related
   AnimationController? _animationController;
@@ -695,31 +700,61 @@ class _PostCardState extends State<PostCard>
     final user = _authService.currentUser;
     if (user == null || _threadController.text.trim().isEmpty) return;
 
+    setState(() => _isAddingThread = true);
+
     try {
       await _postService.addThread(
         postId: widget.post.id,
         userId: user.id,
         content: _threadController.text.trim(),
+        imageFile: _selectedThreadImage,
       );
 
       _threadController.clear();
+      _selectedThreadImage = null;
       await _fetchThreads();
 
       if (mounted) {
         setState(() {
           threadCount++;
+          _isAddingThread = false;
         });
       }
 
       // No need to refresh all posts for a thread
       // The thread count is already updated locally
     } catch (e) {
+      setState(() => _isAddingThread = false);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error adding thread: $e')));
       }
     }
+  }
+
+  Future<void> _pickThreadImage() async {
+    try {
+      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedThreadImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+      }
+    }
+  }
+
+  void _removeThreadImage() {
+    setState(() {
+      _selectedThreadImage = null;
+    });
   }
 
   @override
@@ -1180,6 +1215,41 @@ class _PostCardState extends State<PostCard>
                               height: 1.3,
                             ),
                           ),
+                          // Display thread image if available
+                          if (thread.imageUrl != null &&
+                              thread.imageUrl!.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                thread.imageUrl!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    height: 120,
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    height: 120,
+                                    color: Colors.grey.shade200,
+                                    child: Icon(
+                                      Icons.broken_image,
+                                      size: 30,
+                                      color: Colors.grey.shade400,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 4),
                           Text(
                             _formatDate(thread.createdAt),
@@ -1198,41 +1268,118 @@ class _PostCardState extends State<PostCard>
           // Add thread input (only show when thread icon is clicked)
           if (showThreadInput) ...[
             const SizedBox(height: 12),
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _threadController,
-                    decoration: const InputDecoration(
-                      hintText: 'Add a thread...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(32)),
+                // Image preview if selected
+                if (_selectedThreadImage != null) ...[
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(
+                          _selectedThreadImage!,
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
                       ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
+                      Positioned(
+                        top: 8,
+                        right: 8,
+                        child: GestureDetector(
+                          onTap: _removeThreadImage,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.6),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                // Input row
+                Row(
+                  children: [
+                    // Image picker button
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F0FF),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.image_outlined,
+                          color: Color(0xFF2E4F99),
+                          size: 20,
+                        ),
+                        onPressed: _pickThreadImage,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
                       ),
                     ),
-                  ),
-                ),
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F0FF),
-                    shape: BoxShape.circle,
-                  ),
-                  alignment: Alignment.center,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.send_rounded,
-                      color: Color(0xFF2E4F99),
-                      size: 22,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _threadController,
+                        decoration: const InputDecoration(
+                          hintText: 'Add a thread...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(32)),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                        ),
+                      ),
                     ),
-                    onPressed: _addThread,
-                    padding: const EdgeInsets.only(left: 2),
-                    constraints: const BoxConstraints(),
-                  ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: _isAddingThread
+                            ? Colors.grey.shade400
+                            : const Color(0xFFE8F0FF),
+                        shape: BoxShape.circle,
+                      ),
+                      alignment: Alignment.center,
+                      child: _isAddingThread
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFF2E4F99),
+                                ),
+                              ),
+                            )
+                          : IconButton(
+                              icon: const Icon(
+                                Icons.send_rounded,
+                                color: Color(0xFF2E4F99),
+                                size: 22,
+                              ),
+                              onPressed: _addThread,
+                              padding: const EdgeInsets.only(left: 2),
+                              constraints: const BoxConstraints(),
+                            ),
+                    ),
+                  ],
                 ),
               ],
             ),

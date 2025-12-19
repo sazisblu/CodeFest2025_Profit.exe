@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../models/thread_model.dart';
 import '../services/post_service.dart';
 import '../services/auth_service.dart';
@@ -23,12 +25,14 @@ class XStyleThreadWidget extends StatefulWidget {
 class _XStyleThreadWidgetState extends State<XStyleThreadWidget> {
   final PostService _postService = PostService();
   final AuthService _authService = AuthService();
+  final ImagePicker _picker = ImagePicker();
   bool _hasLiked = false;
   bool _isProcessing = false;
   bool _showReplyInput = false;
   final TextEditingController _replyController = TextEditingController();
   late int _likeCount;
   late int _replyCount;
+  File? _selectedImage;
 
   @override
   void initState() {
@@ -84,27 +88,57 @@ class _XStyleThreadWidgetState extends State<XStyleThreadWidget> {
     final user = _authService.currentUser;
     if (user == null || _replyController.text.trim().isEmpty) return;
 
+    setState(() => _isProcessing = true);
+
     try {
       await _postService.addThread(
         postId: widget.thread.postId,
         userId: user.id,
         content: _replyController.text.trim(),
         parentThreadId: widget.thread.id,
+        imageFile: _selectedImage,
       );
 
       _replyController.clear();
       setState(() {
         _showReplyInput = false;
+        _selectedImage = null;
         _replyCount++;
+        _isProcessing = false;
       });
       widget.onUpdate();
     } catch (e) {
+      setState(() => _isProcessing = false);
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error adding reply: $e')));
       }
     }
+  }
+
+  Future<void> _pickImage() async {
+    try {
+      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+      }
+    }
+  }
+
+  void _removeImage() {
+    setState(() {
+      _selectedImage = null;
+    });
   }
 
   @override
@@ -207,6 +241,40 @@ class _XStyleThreadWidgetState extends State<XStyleThreadWidget> {
                       height: 1.4,
                     ),
                   ),
+                  // Thread image display
+                  if (widget.thread.imageUrl != null &&
+                      widget.thread.imageUrl!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        widget.thread.imageUrl!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Container(
+                            height: 150,
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            height: 150,
+                            color: Colors.grey.shade200,
+                            child: Icon(
+                              Icons.broken_image,
+                              size: 40,
+                              color: Colors.grey.shade400,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   // Action buttons
                   Row(
@@ -278,50 +346,123 @@ class _XStyleThreadWidgetState extends State<XStyleThreadWidget> {
                   // Reply input
                   if (_showReplyInput) ...[
                     const SizedBox(height: 12),
-                    Row(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF5F5F5),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFFE0E0E0),
-                              ),
-                            ),
-                            child: TextField(
-                              controller: _replyController,
-                              decoration: const InputDecoration(
-                                hintText: 'Post your reply',
-                                border: InputBorder.none,
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                hintStyle: TextStyle(
-                                  color: Color(0xFF999999),
-                                  fontSize: 14,
+                        // Image preview if selected
+                        if (_selectedImage != null) ...[
+                          Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.file(
+                                  _selectedImage!,
+                                  height: 120,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
                                 ),
                               ),
-                              maxLines: null,
-                            ),
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: GestureDetector(
+                                  onTap: _removeImage,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.6),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.close,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: _addReply,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF2E4F99),
-                              shape: BoxShape.circle,
+                          const SizedBox(height: 8),
+                        ],
+                        // Input row with image picker
+                        Row(
+                          children: [
+                            // Image picker button
+                            GestureDetector(
+                              onTap: _pickImage,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE8F0FF),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.image_outlined,
+                                  color: const Color(0xFF2E4F99),
+                                  size: 20,
+                                ),
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.send,
-                              color: Colors.white,
-                              size: 18,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF5F5F5),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: const Color(0xFFE0E0E0),
+                                  ),
+                                ),
+                                child: TextField(
+                                  controller: _replyController,
+                                  decoration: const InputDecoration(
+                                    hintText: 'Post your reply',
+                                    border: InputBorder.none,
+                                    contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    hintStyle: TextStyle(
+                                      color: Color(0xFF999999),
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  maxLines: null,
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: _isProcessing ? null : _addReply,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: _isProcessing
+                                      ? Colors.grey.shade400
+                                      : const Color(0xFF2E4F99),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: _isProcessing
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.send,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),

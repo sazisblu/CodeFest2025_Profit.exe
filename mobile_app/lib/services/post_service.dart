@@ -231,24 +231,74 @@ class PostService {
     }
   }
 
+  // Upload thread/comment image to Supabase Storage
+  Future<String?> uploadThreadImage(File imageFile) async {
+    try {
+      print('Starting thread image upload...');
+      final String fileName =
+          'thread_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final String filePath = fileName;
+
+      print('Uploading to thread-images bucket: $filePath');
+      await _supabase.storage
+          .from('thread-images')
+          .upload(
+            filePath,
+            imageFile,
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
+          );
+
+      print('Upload successful, getting public URL...');
+      final String imageUrl = _supabase.storage
+          .from('thread-images')
+          .getPublicUrl(filePath);
+
+      print('Thread image URL: $imageUrl');
+      return imageUrl;
+    } catch (e) {
+      print('Error uploading thread image: $e');
+      print('Error details: ${e.toString()}');
+      rethrow; // Rethrow to allow caller to handle the error
+    }
+  }
+
   // Add a thread to a post
   Future<void> addThread({
     required String postId,
     required String userId,
     required String content,
     String? parentThreadId, // null for top-level thread
+    File? imageFile, // Optional image for the thread/comment
   }) async {
     try {
+      // Upload image if provided
+      String? imageUrl;
+      if (imageFile != null) {
+        print('Image file provided, uploading...');
+        imageUrl = await uploadThreadImage(imageFile);
+        if (imageUrl == null || imageUrl.isEmpty) {
+          throw Exception(
+            'Image upload failed. Please check if the "thread-images" bucket exists in Supabase Storage.',
+          );
+        }
+        print('Image uploaded successfully: $imageUrl');
+      } else {
+        print('No image file provided');
+      }
+
+      print('Inserting thread with image_url: $imageUrl');
       // Add thread record
       await _supabase.from('post_threads').insert({
         'post_id': postId,
         'user_id': userId,
         'content': content,
         'parent_thread_id': parentThreadId,
+        'image_url': imageUrl,
         'likes_count': 0,
         'replies_count': 0,
         'created_at': DateTime.now().toIso8601String(),
       });
+      print('Thread inserted successfully');
 
       // If this is a reply, update parent's reply count
       if (parentThreadId != null) {
