@@ -9,6 +9,7 @@ import '../models/thread_model.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../services/post_service.dart';
+import 'post_detail_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -483,7 +484,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     SliverList(
                       delegate: SliverChildBuilderDelegate((context, index) {
                         final post = _userPosts[index];
-                        return PostCard(post: post, onLike: () {});
+                        return PostCard(
+                          post: post, 
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PostDetailScreen(post: post),
+                              ),
+                            );
+                          },
+                        );
                       }, childCount: _userPosts.length),
                     ),
 
@@ -553,9 +564,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 class PostCard extends StatefulWidget {
   final PostModel post;
-  final VoidCallback onLike;
+  final VoidCallback onTap;
 
-  const PostCard({super.key, required this.post, required this.onLike});
+  const PostCard({super.key, required this.post, required this.onTap});
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -567,15 +578,8 @@ class _PostCardState extends State<PostCard>
   late int threadCount;
   bool hasLiked = false;
   bool isProcessingLike = false;
-  List<ThreadModel> threads = [];
-  bool loadingThreads = false;
-  bool showThreadInput = false;
-  final _threadController = TextEditingController();
   final PostService _postService = PostService();
   final AuthService _authService = AuthService();
-  final ImagePicker _picker = ImagePicker();
-  File? _selectedThreadImage;
-  bool _isAddingThread = false;
 
   // Animation related
   AnimationController? _animationController;
@@ -615,7 +619,6 @@ class _PostCardState extends State<PostCard>
     );
 
     _checkIfLiked();
-    _fetchThreads();
   }
 
   Future<void> _checkIfLiked() async {
@@ -625,20 +628,6 @@ class _PostCardState extends State<PostCard>
       if (mounted && !isProcessingLike) {
         setState(() {});
       }
-    }
-  }
-
-  Future<void> _fetchThreads() async {
-    if (mounted) {
-      setState(() {
-        loadingThreads = true;
-      });
-    }
-    threads = await _postService.getThreads(widget.post.id);
-    if (mounted) {
-      setState(() {
-        loadingThreads = false;
-      });
     }
   }
 
@@ -696,695 +685,447 @@ class _PostCardState extends State<PostCard>
     }
   }
 
-  Future<void> _addThread() async {
-    final user = _authService.currentUser;
-    if (user == null || _threadController.text.trim().isEmpty) return;
-
-    setState(() => _isAddingThread = true);
-
-    try {
-      await _postService.addThread(
-        postId: widget.post.id,
-        userId: user.id,
-        content: _threadController.text.trim(),
-        imageFile: _selectedThreadImage,
-      );
-
-      _threadController.clear();
-      _selectedThreadImage = null;
-      await _fetchThreads();
-
-      if (mounted) {
-        setState(() {
-          threadCount++;
-          _isAddingThread = false;
-        });
-      }
-
-      // No need to refresh all posts for a thread
-      // The thread count is already updated locally
-    } catch (e) {
-      setState(() => _isAddingThread = false);
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error adding thread: $e')));
-      }
-    }
-  }
-
-  Future<void> _pickThreadImage() async {
-    try {
-      final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-
-      if (pickedFile != null) {
-        setState(() {
-          _selectedThreadImage = File(pickedFile.path);
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
-      }
-    }
-  }
-
-  void _removeThreadImage() {
-    setState(() {
-      _selectedThreadImage = null;
-    });
-  }
-
   @override
   void dispose() {
-    _threadController.dispose();
     _animationController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // User header section
-          Row(
-            children: [
-              // Profile avatar
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Colors.orange, Colors.deepOrange],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // User header section
+            Row(
+              children: [
+                // Profile avatar
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: [Colors.orange, Colors.deepOrange],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                   ),
-                ),
-                child: widget.post.userPhotoUrl != null
-                    ? ClipOval(
-                        child: Image.network(
-                          widget.post.userPhotoUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 28,
-                            );
-                          },
-                        ),
-                      )
-                    : const Icon(Icons.person, color: Colors.white, size: 28),
-              ),
-              const SizedBox(width: 12),
-              // User info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text:
-                                widget.post.userDisplayName ?? 'Anonymous User',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1a1a1a),
-                            ),
+                  child: widget.post.userPhotoUrl != null
+                      ? ClipOval(
+                          child: Image.network(
+                            widget.post.userPhotoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 28,
+                              );
+                            },
                           ),
-                          if (widget.post.location.isNotEmpty) ...[
-                            const TextSpan(
-                              text: ' is feeling angry in ',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF666666),
-                              ),
-                            ),
+                        )
+                      : const Icon(Icons.person, color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 12),
+                // User info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      RichText(
+                        text: TextSpan(
+                          children: [
                             TextSpan(
-                              text: widget.post.location,
+                              text:
+                                  widget.post.userDisplayName ??
+                                  'Anonymous User',
                               style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                                 color: Color(0xFF1a1a1a),
                               ),
                             ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _formatDate(widget.post.createdAt),
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF999999),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // More options menu
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F0FF),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.more_horiz,
-                  color: Color(0xFF2E4F99),
-                  size: 20,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Post title
-          Text(
-            widget.post.title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1a1a1a),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Post description
-          Text(
-            widget.post.description,
-            style: const TextStyle(
-              fontSize: 15,
-              color: Color(0xFF333333),
-              height: 1.4,
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Post image display
-          if (widget.post.imageUrl != null &&
-              widget.post.imageUrl!.isNotEmpty) ...[
-            Container(
-              width: double.infinity,
-              height: 200,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(15),
-                child: Image.network(
-                  widget.post.imageUrl!,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      color: Colors.grey.shade200,
-                      child: const Center(child: CircularProgressIndicator()),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey.shade200,
-                      child: Icon(
-                        Icons.broken_image,
-                        size: 60,
-                        color: Colors.grey.shade400,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // Likes count
-          Text(
-            '$likeCount likes',
-            style: const TextStyle(fontSize: 13, color: Color(0xFF666666)),
-          ),
-          const SizedBox(height: 12),
-
-          // Action buttons row
-          Row(
-            children: [
-              // Animated Like button
-              _animationController != null
-                  ? AnimatedBuilder(
-                      animation: _animationController!,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _scaleAnimation?.value ?? 1.0,
-                          child: GestureDetector(
-                            onTap: isProcessingLike ? null : _handleLike,
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isProcessingLike
-                                    ? Colors.grey.shade300
-                                    : hasLiked
-                                    ? const Color(0xFF2E4F99)
-                                    : Colors.transparent,
-                                border: hasLiked || isProcessingLike
-                                    ? null
-                                    : Border.all(
-                                        color: const Color(0xFF2E4F99),
-                                        width: 1.5,
-                                      ),
-                                borderRadius: BorderRadius.circular(25),
-                                boxShadow: hasLiked
-                                    ? [
-                                        BoxShadow(
-                                          color: const Color(
-                                            0xFF2E4F99,
-                                          ).withValues(alpha: 0.3),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  AnimatedScale(
-                                    scale: hasLiked
-                                        ? (_iconAnimation?.value ?? 1.0)
-                                        : 1.0,
-                                    duration: const Duration(milliseconds: 200),
-                                    child: Icon(
-                                      hasLiked
-                                          ? Icons.thumb_up
-                                          : Icons.thumb_up_outlined,
-                                      color: hasLiked
-                                          ? Colors.white
-                                          : const Color(0xFF2E4F99),
-                                      size: 16,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  AnimatedDefaultTextStyle(
-                                    duration: const Duration(milliseconds: 300),
-                                    style: TextStyle(
-                                      color: hasLiked
-                                          ? Colors.white
-                                          : const Color(0xFF2E4F99),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    child: Text(hasLiked ? 'Liked' : 'Like'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    )
-                  :
-                    // Fallback like button without animation
-                    GestureDetector(
-                      onTap: isProcessingLike ? null : _handleLike,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isProcessingLike
-                              ? Colors.grey.shade300
-                              : hasLiked
-                              ? const Color(0xFF2E4F99)
-                              : Colors.transparent,
-                          border: hasLiked || isProcessingLike
-                              ? null
-                              : Border.all(
-                                  color: const Color(0xFF2E4F99),
-                                  width: 1.5,
+                            if (widget.post.location.isNotEmpty) ...[
+                              const TextSpan(
+                                text: ' is feeling angry in ',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF666666),
                                 ),
-                          borderRadius: BorderRadius.circular(25),
-                          boxShadow: hasLiked
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFF2E4F99,
-                                    ).withValues(alpha: 0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              hasLiked
-                                  ? Icons.thumb_up
-                                  : Icons.thumb_up_outlined,
-                              color: hasLiked
-                                  ? Colors.white
-                                  : const Color(0xFF2E4F99),
-                              size: 16,
-                            ),
-                            const SizedBox(width: 6),
-                            AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 300),
-                              style: TextStyle(
-                                color: hasLiked
-                                    ? Colors.white
-                                    : const Color(0xFF2E4F99),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
                               ),
-                              child: Text(hasLiked ? 'Liked' : 'Like'),
-                            ),
+                              TextSpan(
+                                text: widget.post.location,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF1a1a1a),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
-                    ),
-              const SizedBox(width: 12),
-              // Thread button
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    showThreadInput = !showThreadInput;
-                  });
-                },
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: showThreadInput
-                        ? const Color(0xFF2E4F99)
-                        : const Color(0xFFE8F0FF),
-                    shape: BoxShape.circle,
-                    boxShadow: showThreadInput
-                        ? [
-                            BoxShadow(
-                              color: const Color(0xFF2E4F99).withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : [],
-                  ),
-                  child: Icon(
-                    Icons.mode_comment_rounded,
-                    color: showThreadInput
-                        ? Colors.white
-                        : const Color(0xFF2E4F99),
-                    size: 20,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Share button
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F0FF),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.send_rounded,
-                  color: Color(0xFF2E4F99),
-                  size: 20,
-                ),
-              ),
-              const Spacer(),
-              // Threads count
-              Text(
-                '$threadCount threads',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Threads section
-          if (loadingThreads)
-            const Center(child: CircularProgressIndicator())
-          else ...[
-            for (final thread in threads)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [Colors.green, Colors.teal],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: thread.userPhotoUrl != null
-                          ? ClipOval(
-                              child: Image.network(
-                                thread.userPhotoUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 20,
-                                  );
-                                },
-                              ),
-                            )
-                          : const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            thread.userDisplayName ?? 'User',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1a1a1a),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            thread.content,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF333333),
-                              height: 1.3,
-                            ),
-                          ),
-                          // Display thread image if available
-                          if (thread.imageUrl != null &&
-                              thread.imageUrl!.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                thread.imageUrl!,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                loadingBuilder:
-                                    (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Container(
-                                        height: 120,
-                                        color: Colors.grey.shade200,
-                                        child: const Center(
-                                          child: CircularProgressIndicator(),
-                                        ),
-                                      );
-                                    },
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    height: 120,
-                                    color: Colors.grey.shade200,
-                                    child: Icon(
-                                      Icons.broken_image,
-                                      size: 30,
-                                      color: Colors.grey.shade400,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatDate(thread.createdAt),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF999999),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-          // Add thread input (only show when thread icon is clicked)
-          if (showThreadInput) ...[
-            const SizedBox(height: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Image preview if selected
-                if (_selectedThreadImage != null) ...[
-                  Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.file(
-                          _selectedThreadImage!,
-                          height: 120,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      Positioned(
-                        top: 8,
-                        right: 8,
-                        child: GestureDetector(
-                          onTap: _removeThreadImage,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.6),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 16,
-                            ),
-                          ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatDate(widget.post.createdAt),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF999999),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                ],
-                // Input row
-                Row(
-                  children: [
-                    // Image picker button
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F0FF),
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.image_outlined,
-                          color: Color(0xFF2E4F99),
-                          size: 20,
+                ),
+                // More options menu
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F0FF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.more_horiz,
+                    color: Color(0xFF2E4F99),
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // Post title
+            Text(
+              widget.post.title,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1a1a1a),
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Post description
+            Text(
+              widget.post.description,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Color(0xFF333333),
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Post image display
+            if (widget.post.imageUrl != null &&
+                widget.post.imageUrl!.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                height: 200,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: Image.network(
+                    widget.post.imageUrl!,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: Colors.grey.shade200,
+                        child: const Center(child: CircularProgressIndicator()),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey.shade200,
+                        child: Icon(
+                          Icons.broken_image,
+                          size: 60,
+                          color: Colors.grey.shade400,
                         ),
-                        onPressed: _pickThreadImage,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _threadController,
-                        decoration: const InputDecoration(
-                          hintText: 'Add a thread...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(32)),
-                          ),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: _isAddingThread
-                            ? Colors.grey.shade400
-                            : const Color(0xFFE8F0FF),
-                        shape: BoxShape.circle,
-                      ),
-                      alignment: Alignment.center,
-                      child: _isAddingThread
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Color(0xFF2E4F99),
+                      );
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Likes count
+            Text(
+              '$likeCount likes',
+              style: const TextStyle(fontSize: 13, color: Color(0xFF666666)),
+            ),
+            const SizedBox(height: 12),
+
+            // Action buttons row
+            Row(
+              children: [
+                // Animated Like button
+                _animationController != null
+                    ? AnimatedBuilder(
+                        animation: _animationController!,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _scaleAnimation?.value ?? 1.0,
+                            child: GestureDetector(
+                              onTap: isProcessingLike
+                                  ? null
+                                  : () {
+                                      // Prevent triggering the main post tap
+                                      _handleLike();
+                                    },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeInOut,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isProcessingLike
+                                      ? Colors.grey.shade300
+                                      : hasLiked
+                                      ? const Color(0xFF2E4F99)
+                                      : Colors.transparent,
+                                  border: hasLiked || isProcessingLike
+                                      ? null
+                                      : Border.all(
+                                          color: const Color(0xFF2E4F99),
+                                          width: 1.5,
+                                        ),
+                                  borderRadius: BorderRadius.circular(25),
+                                  boxShadow: hasLiked
+                                      ? [
+                                          BoxShadow(
+                                            color: const Color(
+                                              0xFF2E4F99,
+                                            ).withValues(alpha: 0.3),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    AnimatedScale(
+                                      scale: hasLiked
+                                          ? (_iconAnimation?.value ?? 1.0)
+                                          : 1.0,
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+                                      child: Icon(
+                                        hasLiked
+                                            ? Icons.thumb_up
+                                            : Icons.thumb_up_outlined,
+                                        color: hasLiked
+                                            ? Colors.white
+                                            : const Color(0xFF2E4F99),
+                                        size: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    AnimatedDefaultTextStyle(
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      style: TextStyle(
+                                        color: hasLiked
+                                            ? Colors.white
+                                            : const Color(0xFF2E4F99),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      child: Text(hasLiked ? 'Liked' : 'Like'),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            )
-                          : IconButton(
-                              icon: const Icon(
-                                Icons.send_rounded,
-                                color: Color(0xFF2E4F99),
-                                size: 22,
-                              ),
-                              onPressed: _addThread,
-                              padding: const EdgeInsets.only(left: 2),
-                              constraints: const BoxConstraints(),
                             ),
+                          );
+                        },
+                      )
+                    :
+                      // Fallback like button without animation
+                      GestureDetector(
+                        onTap: isProcessingLike
+                            ? null
+                            : () {
+                                // Prevent triggering the main post tap
+                                _handleLike();
+                              },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isProcessingLike
+                                ? Colors.grey.shade300
+                                : hasLiked
+                                ? const Color(0xFF2E4F99)
+                                : Colors.transparent,
+                            border: hasLiked || isProcessingLike
+                                ? null
+                                : Border.all(
+                                    color: const Color(0xFF2E4F99),
+                                    width: 1.5,
+                                  ),
+                            borderRadius: BorderRadius.circular(25),
+                            boxShadow: hasLiked
+                                ? [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF2E4F99,
+                                      ).withValues(alpha: 0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                hasLiked
+                                    ? Icons.thumb_up
+                                    : Icons.thumb_up_outlined,
+                                color: hasLiked
+                                    ? Colors.white
+                                    : const Color(0xFF2E4F99),
+                                size: 16,
+                              ),
+                              const SizedBox(width: 6),
+                              AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 300),
+                                style: TextStyle(
+                                  color: hasLiked
+                                      ? Colors.white
+                                      : const Color(0xFF2E4F99),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                child: Text(hasLiked ? 'Liked' : 'Like'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                const SizedBox(width: 12),
+                // Comment button - opens detailed view
+                GestureDetector(
+                  onTap: () {
+                    // Navigate to detailed view for commenting
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            PostDetailScreen(post: widget.post),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F0FF),
+                      shape: BoxShape.circle,
                     ),
-                  ],
+                    child: const Icon(
+                      Icons.mode_comment_rounded,
+                      color: Color(0xFF2E4F99),
+                      size: 20,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Share button
+                GestureDetector(
+                  onTap: () {
+                    // Add share functionality here
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Share functionality coming soon!'),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F0FF),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.send_rounded,
+                      color: Color(0xFF2E4F99),
+                      size: 20,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                // Comments and Thread indicator
+                GestureDetector(
+                  onTap: widget.onTap,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F0FF),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$threadCount replies',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF2E4F99),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          size: 10,
+                          color: Color(0xFF2E4F99),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
           ],
-        ],
+        ),
       ),
     );
   }

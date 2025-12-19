@@ -250,7 +250,7 @@ class _VotingScreenState extends State<VotingScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12.0),
         border: isVoted 
-            ? Border.all(color: Colors.green, width: 2) 
+            ? Border.all(color: Color(0xFF1976D2), width: 2) 
             : null,
         boxShadow: [
           BoxShadow(
@@ -353,7 +353,7 @@ class _VotingScreenState extends State<VotingScreen> {
                   Icon(
                     isVoted ? Icons.favorite : Icons.favorite_border,
                     size: 16,
-                    color: isVoted ? Colors.red : Colors.grey,
+                    color: isVoted ? Color(0xFF1976D2) : Colors.grey,
                   ),
                   const SizedBox(width: 4),
                   Text(
@@ -395,7 +395,7 @@ class _VotingScreenState extends State<VotingScreen> {
                   ElevatedButton(
                     onPressed: (hasVoted && !isVoted) ? null : (isVoted ? null : () => _voteForProposal(index)),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isVoted ? Colors.green : const Color(0xFF2E4F99),
+                      backgroundColor: isVoted ? Color(0xFF1976D2) : const Color(0xFF2E4F99),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -492,7 +492,7 @@ class _VotingScreenState extends State<VotingScreen> {
                         Text('Vote submitted for "${proposals[index]['title']}"!'),
                       ],
                     ),
-                    backgroundColor: Colors.green,
+                    backgroundColor: Color(0xFF1976D2),
                     duration: const Duration(seconds: 4),
                   ),
                 );

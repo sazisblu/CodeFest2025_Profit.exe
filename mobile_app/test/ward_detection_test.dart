@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/services.dart';
 import 'package:hamro_chautari/services/ward_detection_service.dart';
 
 void main() {
