@@ -7,6 +7,7 @@ import 'package:geocoding/geocoding.dart';
 import '../services/auth_service.dart';
 import '../services/post_service.dart';
 import '../services/tag_service.dart';
+import '../services/ward_detection_service.dart';
 import '../models/tag_model.dart';
 
 class CreatePostScreen extends StatefulWidget {
@@ -27,15 +28,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   final PostService _postService = PostService();
   final AuthService _authService = AuthService();
   final TagService _tagService = TagService();
+  final WardDetectionService _wardDetectionService = WardDetectionService();
   final ImagePicker _picker = ImagePicker();
 
   String? _selectedTagId;
   String? _selectedFeeling;
   bool _isLoading = false;
   bool _isLoadingTags = true;
+  bool _isDetectingWard = false;
   File? _selectedImage;
   double? _latitude;
   double? _longitude;
+  int? _wardNumber;
 
   List<TagModel> _availableTags = [];
 
@@ -84,9 +88,32 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     if (permission == LocationPermission.deniedForever) return;
 
     try {
+      setState(() {
+        _isDetectingWard = true;
+      });
+
       Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+
+      // Detect ward number
+      final wardResult = await _wardDetectionService.findWardInBhaktapur(
+        position.latitude,
+        position.longitude,
+      );
+
+      print('Ward detection resul tmeow : $wardResult');
+
+      if (wardResult['success'] == true) {
+        _wardNumber = wardResult['ward']['number'];
+        print('Ward detected: $_wardNumber (type: ${_wardNumber.runtimeType})');
+      } else {
+        print(
+          'Ward detection failed: ${wardResult['message'] ?? wardResult['error']}',
+        );
+        _wardNumber = null;
+      }
+
       List<Placemark> placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
@@ -98,10 +125,18 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           _locationController.text = address;
           _latitude = position.latitude;
           _longitude = position.longitude;
+          _isDetectingWard = false;
         });
       }
     } catch (e) {
-      // Optionally handle error
+      setState(() {
+        _isDetectingWard = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error detecting location: $e')));
+      }
     }
   }
 
@@ -185,6 +220,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     });
 
     try {
+      print('Creating post with ward number: $_wardNumber');
       await _postService.createPost(
         userId: user.id,
         title: _titleController.text.trim(),
@@ -194,6 +230,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         imageFile: _selectedImage,
         latitude: _latitude,
         longitude: _longitude,
+        wardNumber: _wardNumber,
       );
 
       if (mounted) {

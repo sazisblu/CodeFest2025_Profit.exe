@@ -8,7 +8,7 @@ console.log("=".repeat(60));
 const testLocations = [
   { lat: 27.671043832848206, lon: 85.43919412551233, label: "Khwopa College" },
   { lat: 27.6715, lon: 85.4298, label: "Durbar Square" },
-  { lat: 27.678, lon: 85.428, label: "Sample Location 1" },
+  { lat:27.6749933, lon: 85.4470633, label: "Skamalbbiample Location 1" },
   { lat: 27.665, lon: 85.435, label: "Outside Municipality" },
 ];
 

@@ -42,12 +42,17 @@ class PostService {
     File? imageFile,
     double? latitude,
     double? longitude,
+    int? wardNumber,
   }) async {
     try {
       String? imageUrl;
       if (imageFile != null) {
         imageUrl = await uploadImage(imageFile);
       }
+
+      print(
+        'PostService.createPost - wardNumber: $wardNumber (type: ${wardNumber.runtimeType})',
+      );
 
       final response = await _supabase
           .from('posts')
@@ -60,6 +65,7 @@ class PostService {
             'image_url': imageUrl,
             'latitude': latitude,
             'longitude': longitude,
+            'ward_no': wardNumber,
             'likes_count': 0,
             'threads_count': 0,
             'created_at': DateTime.now().toIso8601String(),
@@ -67,6 +73,7 @@ class PostService {
           .select()
           .single();
 
+      print('Post created successfully. Response: $response');
       return PostModel.fromJson(response);
     } catch (e) {
       print('Error creating post: $e');

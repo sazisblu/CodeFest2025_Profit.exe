@@ -53,6 +53,9 @@ dependencies:
   # Chart library for pie charts
   fl_chart: ^0.69.0
 
+  # Geospatial operations
+  turf: ^0.0.8
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -81,6 +84,7 @@ flutter:
   # Assets section
   assets:
     - assets/images/
+    - assets/data/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
