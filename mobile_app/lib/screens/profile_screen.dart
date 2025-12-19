@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
+import 'package:hamro_chautari/widgets/custom_app_bar.dart';
 import '../models/user_model.dart';
 import '../models/user_stats_model.dart';
 import '../services/auth_service.dart';
@@ -114,27 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.campaign, color: Colors.blue),
-          onPressed: () {},
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Color(0xFF1E3A8A)),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.notifications_outlined,
-              color: Color(0xFF1E3A8A),
-            ),
-            onPressed: () {},
-          ),
-        ],
-      ),
+      appBar: CustomAppBar(title: 'Profile'),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(

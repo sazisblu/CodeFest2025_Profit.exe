@@ -10,50 +10,66 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
+      scrolledUnderElevation: 0,
       automaticallyImplyLeading: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          bottom: Radius.circular(32),
+        ),
+      ),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Logo section - using provided star logo
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
-            child: Image.asset(
-              'assets/images/logo.png',
-              fit: BoxFit.contain,
-            ),
-          ),
-
-          // Right side icons
+          // Logo and text together
           Row(
             children: [
-              // Search icon
               Container(
-                width: 50,
-                height: 50,
-                margin: const EdgeInsets.only(right: 16),
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(8)),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.contain,
+                ),
+              ),
+              const SizedBox(width: 8), // Space between logo and text
+              Text(
+                'Hamro\nChautari',
+                style: TextStyle(
+                  color: Color(0xFF2E4F99),
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          // Icon buttons together
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                margin: const EdgeInsets.only(right: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E4F99),
+                  color: const Color(0xFFE8F0FF),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.search_rounded,
-                  color: const Color(0xFFE8F0FF),
+                  color: Theme.of(context).primaryColor,
                   size: 30,
                 ),
               ),
-              // Notification icon
               Container(
-                width: 50,
-                height: 50,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2E4F99),
+                  color: const Color(0xFFE8F0FF),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.notifications_rounded,
-                  color: Colors.white,
+                  color: Theme.of(context).primaryColor,
                   size: 25,
                 ),
               ),
@@ -65,5 +81,5 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(70);
 }

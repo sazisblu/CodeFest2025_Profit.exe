@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:hamro_chautari/services/profile_service.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../models/post_model.dart';
+import '../models/user_model.dart';
 import '../services/post_service.dart';
 import '../widgets/custom_app_bar.dart';
 import 'create_post_screen.dart';
-import 'profile_screen.dart';
 import '../models/comment_model.dart';
 import '../services/auth_service.dart';
 
@@ -22,13 +23,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final AuthService _authService = AuthService();
   List<PostModel> _posts = [];
   bool _isLoading = true;
-
-  void _signOut() async {
-    await _authService.signOut();
-    if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/login');
-    }
-  }
 
   @override
   void initState() {
@@ -67,15 +61,17 @@ class _HomeScreenState extends State<HomeScreen> {
         final imageFile = File(pickedFile.path);
 
         // Navigate to CreatePostScreen with the selected image
-        final result = await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => CreatePostScreen(selectedImage: imageFile),
-          ),
-        );
+        if (mounted) {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CreatePostScreen(selectedImage: imageFile),
+            ),
+          );
 
-        if (result == true) {
-          _loadPosts(); // Refresh posts after creating a new one
+          if (result == true) {
+            _loadPosts(); // Refresh posts after creating a new one
+          }
         }
       }
     } catch (e) {
@@ -105,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(25),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 10,
                         offset: const Offset(0, 2),
                       ),
@@ -114,22 +110,80 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     children: [
                       // User profile image
-                      Container(
-                        width: 45,
-                        height: 45,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [Colors.orange, Colors.deepOrange],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                      FutureBuilder<UserModel?>(
+                        future: _authService.getUserProfile(
+                          _authService.currentUser?.id ?? '',
                         ),
-                        child: const Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 24,
-                        ),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Container(
+                              width: 45,
+                              height: 45,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [Colors.orange, Colors.deepOrange],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                              ),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                            );
+                          }
+                          final user = snapshot.data;
+                          if (user == null) {
+                            return const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 24,
+                            );
+                          }
+                          // Use a FutureBuilder to get the custom photo URL from ProfileService
+                          return FutureBuilder<String?>(
+                            future: ProfileService().getUserPhotoUrl(user.id),
+                            builder: (context, photoSnapshot) {
+                              String? photoUrl =
+                                  photoSnapshot.data ?? user.photoUrl;
+                              return Container(
+                                width: 45,
+                                height: 45,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: [Colors.orange, Colors.deepOrange],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                                child: (photoUrl != null && photoUrl.isNotEmpty)
+                                    ? ClipOval(
+                                        child: Image.network(
+                                          photoUrl,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                                return const Icon(
+                                                  Icons.person,
+                                                  color: Colors.white,
+                                                  size: 24,
+                                                );
+                                              },
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                              );
+                            },
+                          );
+                        },
                       ),
                       const SizedBox(width: 12),
                       // What's on your mind input
@@ -206,8 +260,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               return PostCard(
                                 post: post,
                                 onLike: () {
-                                  // Refresh posts to sync with database
-                                  _loadPosts();
+                                  // No need to refresh all posts for a like
+                                  // The PostCard handles its own state updates
                                 },
                               );
                             },
@@ -230,7 +284,8 @@ class PostCard extends StatefulWidget {
   State<PostCard> createState() => _PostCardState();
 }
 
-class _PostCardState extends State<PostCard> {
+class _PostCardState extends State<PostCard>
+    with SingleTickerProviderStateMixin {
   late int likeCount;
   late int commentCount;
   bool hasLiked = false;
@@ -242,11 +297,43 @@ class _PostCardState extends State<PostCard> {
   final PostService _postService = PostService();
   final AuthService _authService = AuthService();
 
+  // Animation related
+  AnimationController? _animationController;
+  Animation<double>? _scaleAnimation;
+  Animation<Color?>? _colorAnimation;
+  Animation<double>? _iconAnimation;
+
   @override
   void initState() {
     super.initState();
     likeCount = widget.post.likes;
     commentCount = widget.post.commentsCount;
+
+    // Initialize animations
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(parent: _animationController!, curve: Curves.elasticOut),
+    );
+
+    _colorAnimation =
+        ColorTween(
+          begin: Colors.transparent,
+          end: const Color(0xFF2E4F99),
+        ).animate(
+          CurvedAnimation(
+            parent: _animationController!,
+            curve: Curves.easeInOut,
+          ),
+        );
+
+    _iconAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
+      CurvedAnimation(parent: _animationController!, curve: Curves.bounceOut),
+    );
+
     _checkIfLiked();
     _fetchComments();
   }
@@ -288,6 +375,11 @@ class _PostCardState extends State<PostCard> {
       });
     }
 
+    // Play animation immediately for better UX
+    _animationController?.forward().then((_) {
+      _animationController?.reverse();
+    });
+
     try {
       // Toggle like in database and get new state
       final newLikeState = await _postService.toggleLike(
@@ -307,12 +399,7 @@ class _PostCardState extends State<PostCard> {
         });
       }
 
-      // Delayed refresh to ensure database consistency
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          widget.onLike();
-        }
-      });
+      // No need to refresh all posts, the UI is already updated optimistically
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -349,8 +436,8 @@ class _PostCardState extends State<PostCard> {
         });
       }
 
-      // Call parent to refresh posts from database
-      widget.onLike();
+      // No need to refresh all posts for a comment
+      // The comment count is already updated locally
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -363,6 +450,7 @@ class _PostCardState extends State<PostCard> {
   @override
   void dispose() {
     _commentController.dispose();
+    _animationController?.dispose();
     super.dispose();
   }
 
@@ -376,7 +464,7 @@ class _PostCardState extends State<PostCard> {
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -552,72 +640,183 @@ class _PostCardState extends State<PostCard> {
           // Action buttons row
           Row(
             children: [
-              // Like button
-              GestureDetector(
-                onTap: isProcessingLike ? null : _handleLike,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isProcessingLike
-                        ? Colors.grey.shade300
-                        : hasLiked
-                        ? const Color(0xFF2E4F99)
-                        : Colors.transparent,
-                    border: hasLiked || isProcessingLike
-                        ? null
-                        : Border.all(color: const Color(0xFF2E4F99)),
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.thumb_up,
-                        color: hasLiked
-                            ? Colors.white
-                            : const Color(0xFF2E4F99),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        hasLiked ? 'Liked' : 'Like',
-                        style: TextStyle(
-                          color: hasLiked
-                              ? Colors.white
-                              : const Color(0xFF2E4F99),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+              // Animated Like button
+              _animationController != null
+                  ? AnimatedBuilder(
+                      animation: _animationController!,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _scaleAnimation?.value ?? 1.0,
+                          child: GestureDetector(
+                            onTap: isProcessingLike ? null : _handleLike,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isProcessingLike
+                                    ? Colors.grey.shade300
+                                    : hasLiked
+                                    ? const Color(0xFF2E4F99)
+                                    : Colors.transparent,
+                                border: hasLiked || isProcessingLike
+                                    ? null
+                                    : Border.all(
+                                        color: const Color(0xFF2E4F99),
+                                        width: 1.5,
+                                      ),
+                                borderRadius: BorderRadius.circular(25),
+                                boxShadow: hasLiked
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(
+                                            0xFF2E4F99,
+                                          ).withValues(alpha: 0.3),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AnimatedScale(
+                                    scale: hasLiked
+                                        ? (_iconAnimation?.value ?? 1.0)
+                                        : 1.0,
+                                    duration: const Duration(milliseconds: 200),
+                                    child: Icon(
+                                      hasLiked
+                                          ? Icons.thumb_up
+                                          : Icons.thumb_up_outlined,
+                                      color: hasLiked
+                                          ? Colors.white
+                                          : const Color(0xFF2E4F99),
+                                      size: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 300),
+                                    style: TextStyle(
+                                      color: hasLiked
+                                          ? Colors.white
+                                          : const Color(0xFF2E4F99),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    child: Text(hasLiked ? 'Liked' : 'Like'),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  :
+                    // Fallback like button without animation
+                    GestureDetector(
+                      onTap: isProcessingLike ? null : _handleLike,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isProcessingLike
+                              ? Colors.grey.shade300
+                              : hasLiked
+                              ? const Color(0xFF2E4F99)
+                              : Colors.transparent,
+                          border: hasLiked || isProcessingLike
+                              ? null
+                              : Border.all(
+                                  color: const Color(0xFF2E4F99),
+                                  width: 1.5,
+                                ),
+                          borderRadius: BorderRadius.circular(25),
+                          boxShadow: hasLiked
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF2E4F99,
+                                    ).withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              hasLiked
+                                  ? Icons.thumb_up
+                                  : Icons.thumb_up_outlined,
+                              color: hasLiked
+                                  ? Colors.white
+                                  : const Color(0xFF2E4F99),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 6),
+                            AnimatedDefaultTextStyle(
+                              duration: const Duration(milliseconds: 300),
+                              style: TextStyle(
+                                color: hasLiked
+                                    ? Colors.white
+                                    : const Color(0xFF2E4F99),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              child: Text(hasLiked ? 'Liked' : 'Like'),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
+                    ),
               const SizedBox(width: 12),
               // Comment button
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    showCommentInput = !showCommentInput;
-                  });
-                },
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE8F0FF),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.mode_comment_outlined,
-                    color: Color(0xFF2E4F99),
-                    size: 20,
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      showCommentInput = !showCommentInput;
+                    });
+                  },
+                  child: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: showCommentInput
+                          ? const Color(0xFF2E4F99)
+                          : const Color(0xFFE8F0FF),
+                      shape: BoxShape.circle,
+                      boxShadow: showCommentInput
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF2E4F99).withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : [],
+                    ),
+                    child: Icon(
+                      Icons.mode_comment_rounded,
+                      color: showCommentInput
+                          ? Colors.white
+                          : const Color(0xFF2E4F99),
+                      size: 20,
+                    ),
                   ),
                 ),
-              ),
               const SizedBox(width: 12),
               // Share button
               Container(
@@ -628,7 +827,7 @@ class _PostCardState extends State<PostCard> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.send_outlined,
+                  Icons.send_rounded,
                   color: Color(0xFF2E4F99),
                   size: 20,
                 ),
@@ -731,7 +930,9 @@ class _PostCardState extends State<PostCard> {
                     controller: _commentController,
                     decoration: const InputDecoration(
                       hintText: 'Add a comment...',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(32)),
+                      ),
                       contentPadding: EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 8,
@@ -739,9 +940,24 @@ class _PostCardState extends State<PostCard> {
                     ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Color(0xFF2E4F99)),
-                  onPressed: _addComment,
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F0FF),
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.send_rounded,
+                      color: Color(0xFF2E4F99),
+                      size: 22,
+                    ),
+                    onPressed: _addComment,
+                    padding: const EdgeInsets.only(left: 2),
+                    constraints: const BoxConstraints(),
+                  ),
                 ),
               ],
             ),
