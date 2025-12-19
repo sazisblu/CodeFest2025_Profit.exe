@@ -171,9 +171,9 @@ export default function HeatmapVisualization({ data, selectedWard }: HeatmapVisu
             positions={wardData.coordinates}
             pathOptions={{
               fillColor: getWardColor(wardNumber),
-              weight: isSelected ? 2 : 1,
-              opacity: isSelected ? 1 : 0.5,
-              color: selectedWard === wardNumber ? '#1e40af' : 'white',
+              weight: isSelected ? 3 : 2,
+              opacity: isSelected ? 1 : 0.8,
+              color: selectedWard === wardNumber ? '#0f766e' : '#166534',
               dashArray: isSelected ? undefined : '5, 5',
               fillOpacity: getWardOpacity(wardNumber),
             }}
