@@ -71,9 +71,9 @@ class _XStyleThreadWidgetState extends State<XStyleThreadWidget> {
       Future.delayed(const Duration(milliseconds: 300), widget.onUpdate);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isProcessing = false);
@@ -100,9 +100,9 @@ class _XStyleThreadWidgetState extends State<XStyleThreadWidget> {
       widget.onUpdate();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding reply: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error adding reply: $e')));
       }
     }
   }

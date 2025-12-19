@@ -41,8 +41,8 @@ class ThreadModel {
       userPhotoUrl: json['user_photo_url'] as String?,
       replies: json['replies'] != null
           ? (json['replies'] as List)
-              .map((r) => ThreadModel.fromJson(r))
-              .toList()
+                .map((r) => ThreadModel.fromJson(r))
+                .toList()
           : [],
     );
   }

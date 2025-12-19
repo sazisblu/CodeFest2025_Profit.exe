@@ -219,9 +219,7 @@ class PostService {
 
       // Attach replies to their parent threads
       return topLevelThreads.map((thread) {
-        return thread.copyWith(
-          replies: repliesMap[thread.id] ?? [],
-        );
+        return thread.copyWith(replies: repliesMap[thread.id] ?? []);
       }).toList();
     } catch (e) {
       print('Error fetching threads: $e');
