@@ -6,6 +6,7 @@ import '../models/post_model.dart';
 import '../models/user_model.dart';
 import '../services/post_service.dart';
 import '../widgets/custom_app_bar.dart';
+import '../widgets/municipal_post_card.dart';
 import 'create_post_screen.dart';
 import '../services/auth_service.dart';
 import 'post_detail_screen.dart';
@@ -28,6 +29,26 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadPosts();
+  }
+
+  MunicipalPost _createDummyMunicipalPost() {
+    return MunicipalPost(
+      organizationName: 'Bhaktapur Municipality',
+      profileImageUrl: 'https://via.placeholder.com/100x100/1877F2/FFFFFF?text=BM',
+      postTime: '2 hours ago',
+      title: 'Main Street Road Repair – Project Update !!!',
+      content: 'The Main Street pothole repair project is now underway! Here\'s the latest progress:',
+      bulletPoints: [
+        'Phase 1: Road resurfacing completed (from City Library to 5th Street).',
+        'Phase 2: Street signage installation in progress.',
+        'Expected completion: 3 weeks.',
+      ],
+      imageUrl: 'https://images.unsplash.com/photo-1581094794329-c8112a89af12?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1000&q=80',
+      isVerified: true,
+      likesCount: 430,
+      commentsCount: 12,
+      sharesCount: 48,
+    );
   }
 
   Future<void> _loadPosts() async {
@@ -249,27 +270,56 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: _loadPosts,
-                    child: _posts.isEmpty
-                        ? const Center(
-                            child: Text('No issues yet. Create the first one!'),
-                          )
-                        : ListView.builder(
-                            itemCount: _posts.length,
-                            itemBuilder: (context, index) {
-                              final post = _posts[index];
-                              return PostCard(
-                                post: post,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          PostDetailScreen(post: post),
-                                    ),
-                                  );
-                                },
+                    child: ListView.builder(
+                      itemCount: _posts.isEmpty ? 1 : _posts.length + 1, // Always show municipal post
+                      itemBuilder: (context, index) {
+                        // If no regular posts, show municipal post first
+                        if (_posts.isEmpty) {
+                          final municipalPost = _createDummyMunicipalPost();
+                          return MunicipalPostCard(
+                            post: municipalPost,
+                            onTap: () {
+                              // Handle municipal post tap
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Municipal post details coming soon!'),
+                                ),
                               );
                             },
+                          );
+                        }
+                        
+                        // Show municipal post at the end (last index)
+                        if (index == _posts.length) {
+                          final municipalPost = _createDummyMunicipalPost();
+                          return MunicipalPostCard(
+                            post: municipalPost,
+                            onTap: () {
+                              // Handle municipal post tap
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Municipal post details coming soon!'),
+                                ),
+                              );
+                            },
+                          );
+                        }
+                        
+                        // Show regular posts first
+                        final post = _posts[index];
+                        return PostCard(
+                          post: post,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    PostDetailScreen(post: post),
+                              ),
+                            );
+                          },
+                        );
+                      },
                           ),
                   ),
                 ),
