@@ -3,7 +3,12 @@ import cors from "cors";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import issuesRoutes from "./routes/issues";
-import { adminLogin, verifyAdminToken, getAdminProfile } from "./controllers/adminController";
+import heatmapRoutes from "./routes/heatmap";
+import {
+  adminLogin,
+  verifyAdminToken,
+  getAdminProfile,
+} from "./controllers/adminController";
 
 dotenv.config();
 
@@ -36,11 +41,19 @@ app.get("/api", (req, res) => {
 // Import and use issues routes
 app.use("/api", issuesRoutes);
 
+// Import and use heatmap routes
+app.use("/api/heatmap", heatmapRoutes);
+
 // Start server
 app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
   console.log(`📊 Health check: http://localhost:${port}/health`);
   console.log(`📊 Issues API: http://localhost:${port}/api/issues`);
+  console.log(`🗺️  Heatmap API: http://localhost:${port}/api/heatmap/all`);
+  console.log(
+    `🗺️  Ward API: http://localhost:${port}/api/heatmap/ward/:wardNumber`
+  );
+  console.log(`🗺️  Summary API: http://localhost:${port}/api/heatmap/summary`);
 });
 
 export default app;
