@@ -1,11 +1,23 @@
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 
 class AuthService {
+    // Listen for auth state changes
+    Stream<AuthState> get onAuthStateChange => _supabase.auth.onAuthStateChange;
   final SupabaseClient _supabase = Supabase.instance.client;
 
   // Get current user
   User? get currentUser => _supabase.auth.currentUser;
+
+  // Restore session if available
+  Future<User?> restoreSession() async {
+    final session = _supabase.auth.currentSession;
+    if (session != null && session.user != null) {
+      return session.user;
+    }
+    return null;
+  }
 
   // Stream of auth state changes
   Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;
@@ -66,18 +78,37 @@ class AuthService {
       );
 
       if (!response) {
-        throw Exception('Failed to initiate Google sign in');
+        return null; // User cancelled or OAuth initiation failed
       }
 
-      // Wait for auth state to update
-      await Future.delayed(const Duration(seconds: 2));
+      // Wait for auth state to change and return the user
+      final completer = Completer<UserModel?>();
+      late StreamSubscription subscription;
+      
+      // Set up a timeout to avoid waiting indefinitely
+      final timeout = Timer(const Duration(seconds: 30), () {
+        subscription.cancel();
+        if (!completer.isCompleted) {
+          completer.complete(null);
+        }
+      });
 
-      final user = _supabase.auth.currentUser;
-      if (user != null) {
-        return await _createOrUpdateUser(user);
-      }
+      subscription = _supabase.auth.onAuthStateChange.listen((data) {
+        final user = data.session?.user;
+        if (user != null) {
+          subscription.cancel();
+          timeout.cancel();
+          if (!completer.isCompleted) {
+            _createOrUpdateUser(user).then((userModel) {
+              completer.complete(userModel);
+            }).catchError((error) {
+              completer.completeError(error);
+            });
+          }
+        }
+      });
 
-      return null;
+      return await completer.future;
     } catch (e) {
       print('Error signing in with Google: $e');
       rethrow;

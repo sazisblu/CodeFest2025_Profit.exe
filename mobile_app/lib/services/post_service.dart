@@ -40,6 +40,8 @@ class PostService {
     required String location,
     required String tagId,
     File? imageFile,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
       String? imageUrl;
@@ -56,6 +58,8 @@ class PostService {
             'location': location,
             'tag_id': tagId,
             'image_url': imageUrl,
+            'latitude': latitude,
+            'longitude': longitude,
             'likes_count': 0,
             'threads_count': 0,
             'created_at': DateTime.now().toIso8601String(),

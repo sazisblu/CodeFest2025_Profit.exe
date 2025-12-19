@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/supabase_config.dart';
+
 import 'screens/login_screen.dart';
 import 'screens/main_navigation_screen.dart';
+import 'services/auth_service.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,11 +16,15 @@ void main() async {
     anonKey: SupabaseConfig.supabaseAnonKey,
   );
 
-  runApp(const MyApp());
+  final authService = AuthService();
+  final user = await authService.restoreSession();
+
+  runApp(MyApp(initialUser: user));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final dynamic initialUser;
+  const MyApp({super.key, this.initialUser});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +35,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
       ),
-      initialRoute: '/login',
+      initialRoute: initialUser != null ? '/home' : '/login',
       routes: {
         '/login': (context) => const LoginScreen(),
         '/home': (context) => const MainNavigationScreen(),
