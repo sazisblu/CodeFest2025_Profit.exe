@@ -5,7 +5,6 @@ import '../models/post_model.dart';
 import '../services/post_service.dart';
 import '../widgets/custom_app_bar.dart';
 import 'create_post_screen.dart';
-import 'profile_screen.dart';
 import '../models/comment_model.dart';
 import '../services/auth_service.dart';
 
