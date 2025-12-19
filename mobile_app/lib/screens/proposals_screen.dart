@@ -83,7 +83,7 @@ class ProposalsScreen extends StatelessWidget {
                     ),
                   ),
                   const Text(
-                    '1st Shravan, 2082 B.S.',
+                    '1st Shrawan, 2082 B.S.',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

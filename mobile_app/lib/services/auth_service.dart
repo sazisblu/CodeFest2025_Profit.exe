@@ -3,10 +3,21 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 
 class AuthService {
+    // Listen for auth state changes
+    Stream<AuthState> get onAuthStateChange => _supabase.auth.onAuthStateChange;
   final SupabaseClient _supabase = Supabase.instance.client;
 
   // Get current user
   User? get currentUser => _supabase.auth.currentUser;
+
+  // Restore session if available
+  Future<User?> restoreSession() async {
+    final session = _supabase.auth.currentSession;
+    if (session != null && session.user != null) {
+      return session.user;
+    }
+    return null;
+  }
 
   // Stream of auth state changes
   Stream<AuthState> get authStateChanges => _supabase.auth.onAuthStateChange;

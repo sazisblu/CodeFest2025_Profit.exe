@@ -7,8 +7,8 @@ import '../models/user_model.dart';
 import '../services/post_service.dart';
 import '../widgets/custom_app_bar.dart';
 import 'create_post_screen.dart';
-import '../models/comment_model.dart';
 import '../services/auth_service.dart';
+import 'post_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -259,9 +259,13 @@ class _HomeScreenState extends State<HomeScreen> {
                               final post = _posts[index];
                               return PostCard(
                                 post: post,
-                                onLike: () {
-                                  // No need to refresh all posts for a like
-                                  // The PostCard handles its own state updates
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => PostDetailScreen(post: post),
+                                    ),
+                                  );
                                 },
                               );
                             },
@@ -276,9 +280,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class PostCard extends StatefulWidget {
   final PostModel post;
-  final VoidCallback onLike;
+  final VoidCallback onTap;
 
-  const PostCard({super.key, required this.post, required this.onLike});
+  const PostCard({super.key, required this.post, required this.onTap});
 
   @override
   State<PostCard> createState() => _PostCardState();
@@ -290,10 +294,6 @@ class _PostCardState extends State<PostCard>
   late int commentCount;
   bool hasLiked = false;
   bool isProcessingLike = false;
-  List<CommentModel> comments = [];
-  bool loadingComments = false;
-  bool showCommentInput = false;
-  final _commentController = TextEditingController();
   final PostService _postService = PostService();
   final AuthService _authService = AuthService();
 
@@ -335,7 +335,6 @@ class _PostCardState extends State<PostCard>
     );
 
     _checkIfLiked();
-    _fetchComments();
   }
 
   Future<void> _checkIfLiked() async {
@@ -348,19 +347,7 @@ class _PostCardState extends State<PostCard>
     }
   }
 
-  Future<void> _fetchComments() async {
-    if (mounted) {
-      setState(() {
-        loadingComments = true;
-      });
-    }
-    comments = await _postService.getComments(widget.post.id);
-    if (mounted) {
-      setState(() {
-        loadingComments = false;
-      });
-    }
-  }
+
 
   Future<void> _handleLike() async {
     final user = _authService.currentUser;
@@ -416,63 +403,35 @@ class _PostCardState extends State<PostCard>
     }
   }
 
-  Future<void> _addComment() async {
-    final user = _authService.currentUser;
-    if (user == null || _commentController.text.trim().isEmpty) return;
 
-    try {
-      await _postService.addComment(
-        postId: widget.post.id,
-        userId: user.id,
-        comment: _commentController.text.trim(),
-      );
-
-      _commentController.clear();
-      await _fetchComments();
-
-      if (mounted) {
-        setState(() {
-          commentCount++;
-        });
-      }
-
-      // No need to refresh all posts for a comment
-      // The comment count is already updated locally
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error adding comment: $e')));
-      }
-    }
-  }
 
   @override
   void dispose() {
-    _commentController.dispose();
     _animationController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return GestureDetector(
+      onTap: widget.onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(25),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // User header section
           Row(
             children: [
@@ -648,7 +607,10 @@ class _PostCardState extends State<PostCard>
                         return Transform.scale(
                           scale: _scaleAnimation?.value ?? 1.0,
                           child: GestureDetector(
-                            onTap: isProcessingLike ? null : _handleLike,
+                            onTap: isProcessingLike ? null : () {
+                              // Prevent triggering the main post tap
+                              _handleLike();
+                            },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
                               curve: Curves.easeInOut,
@@ -721,7 +683,10 @@ class _PostCardState extends State<PostCard>
                   :
                     // Fallback like button without animation
                     GestureDetector(
-                      onTap: isProcessingLike ? null : _handleLike,
+                      onTap: isProcessingLike ? null : () {
+                        // Prevent triggering the main post tap
+                        _handleLike();
+                      },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 300),
                         curve: Curves.easeInOut,
@@ -783,188 +748,91 @@ class _PostCardState extends State<PostCard>
                       ),
                     ),
               const SizedBox(width: 12),
-              // Comment button
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      showCommentInput = !showCommentInput;
-                    });
-                  },
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: showCommentInput
-                          ? const Color(0xFF2E4F99)
-                          : const Color(0xFFE8F0FF),
-                      shape: BoxShape.circle,
-                      boxShadow: showCommentInput
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF2E4F99).withOpacity(0.2),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ]
-                          : [],
+              // Comment button - opens detailed view
+              GestureDetector(
+                onTap: () {
+                  // Navigate to detailed view for commenting
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PostDetailScreen(post: widget.post),
                     ),
-                    child: Icon(
-                      Icons.mode_comment_rounded,
-                      color: showCommentInput
-                          ? Colors.white
-                          : const Color(0xFF2E4F99),
-                      size: 20,
-                    ),
-                  ),
-                ),
-              const SizedBox(width: 12),
-              // Share button
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F0FF),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.send_rounded,
-                  color: Color(0xFF2E4F99),
-                  size: 20,
-                ),
-              ),
-              const Spacer(),
-              // Comments and shares count
-              Text(
-                '$commentCount comments',
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Comments section
-          if (loadingComments)
-            const Center(child: CircularProgressIndicator())
-          else ...[
-            for (final comment in comments)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12.0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [Colors.green, Colors.teal],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: comment.userPhotoUrl != null
-                          ? ClipOval(
-                              child: Image.network(
-                                comment.userPhotoUrl!,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 20,
-                                  );
-                                },
-                              ),
-                            )
-                          : const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            comment.userDisplayName ?? 'User',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1a1a1a),
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            comment.comment,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF333333),
-                              height: 1.3,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _formatDate(comment.createdAt),
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF999999),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-          // Add comment input (only show when comment icon is clicked)
-          if (showCommentInput) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _commentController,
-                    decoration: const InputDecoration(
-                      hintText: 'Add a comment...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(32)),
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                  ),
-                ),
-                Container(
+                  );
+                },
+                child: Container(
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
                     color: const Color(0xFFE8F0FF),
                     shape: BoxShape.circle,
                   ),
-                  alignment: Alignment.center,
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.send_rounded,
-                      color: Color(0xFF2E4F99),
-                      size: 22,
-                    ),
-                    onPressed: _addComment,
-                    padding: const EdgeInsets.only(left: 2),
-                    constraints: const BoxConstraints(),
+                  child: const Icon(
+                    Icons.mode_comment_rounded,
+                    color: Color(0xFF2E4F99),
+                    size: 20,
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(width: 12),
+              // Share button
+              GestureDetector(
+                onTap: () {
+                  // Add share functionality here
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Share functionality coming soon!')),
+                  );
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F0FF),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.send_rounded,
+                    color: Color(0xFF2E4F99),
+                    size: 20,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              // Comments and Thread indicator
+              GestureDetector(
+                onTap: widget.onTap,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F0FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$commentCount replies',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF2E4F99),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 10,
+                        color: Color(0xFF2E4F99),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
-    );
+    )
+  );
   }
 
   String _formatDate(DateTime date) {
