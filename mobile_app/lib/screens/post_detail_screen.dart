@@ -163,9 +163,7 @@ class _PostDetailScreenState extends State<PostDetailScreen>
           threadCount++;
           _isAddingReply = false;
         });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Reply posted successfully!'),
             backgroundColor: Colors.green,
@@ -179,16 +177,15 @@ class _PostDetailScreenState extends State<PostDetailScreen>
         // Show detailed error message
         String errorMessage = e.toString();
         if (errorMessage.contains('thread-images')) {
-          errorMessage = 'Storage bucket "thread-images" not found!\n\n' +
+          errorMessage =
+              'Storage bucket "thread-images" not found!\n\n' +
               'Please create it in Supabase:\n' +
               '1. Go to Storage tab\n' +
               '2. Create bucket "thread-images"\n' +
               '3. Make it PUBLIC';
         }
-        
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(
+
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(errorMessage),
             backgroundColor: Colors.red,
@@ -214,15 +211,13 @@ class _PostDetailScreenState extends State<PostDetailScreen>
         final file = File(pickedFile.path);
         final fileSize = await file.length();
         print('Image size: ${fileSize / 1024} KB');
-        
+
         setState(() {
           _selectedReplyImage = file;
         });
-        
+
         if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Image selected!'),
               duration: Duration(seconds: 1),
@@ -843,8 +838,9 @@ class _PostDetailScreenState extends State<PostDetailScreen>
                                 decoration: const InputDecoration(
                                   hintText: 'Reply to this thread...',
                                   border: OutlineInputBorder(
-                                    borderRadius:
-                                        BorderRadius.all(Radius.circular(25)),
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(25),
+                                    ),
                                   ),
                                   contentPadding: EdgeInsets.symmetric(
                                     horizontal: 16,
@@ -875,8 +871,9 @@ class _PostDetailScreenState extends State<PostDetailScreen>
                             padding: EdgeInsets.all(12.0),
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : IconButton(

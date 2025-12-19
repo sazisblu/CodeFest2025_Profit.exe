@@ -451,8 +451,8 @@ class _XStyleThreadWidgetState extends State<XStyleThreadWidget> {
                                           strokeWidth: 2,
                                           valueColor:
                                               AlwaysStoppedAnimation<Color>(
-                                            Colors.white,
-                                          ),
+                                                Colors.white,
+                                              ),
                                         ),
                                       )
                                     : const Icon(

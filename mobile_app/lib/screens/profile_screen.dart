@@ -1227,15 +1227,15 @@ class _PostCardState extends State<PostCard>
                                 width: double.infinity,
                                 loadingBuilder:
                                     (context, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return Container(
-                                    height: 120,
-                                    color: Colors.grey.shade200,
-                                    child: const Center(
-                                      child: CircularProgressIndicator(),
-                                    ),
-                                  );
-                                },
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        height: 120,
+                                        color: Colors.grey.shade200,
+                                        child: const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      );
+                                    },
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
                                     height: 120,
