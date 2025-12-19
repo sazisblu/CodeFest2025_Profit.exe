@@ -4,10 +4,10 @@ export async function calculatePriorityScore(postId: string): Promise<number> {
   try {
     console.log(`  🔢 Calculating priority score for post: ${postId}`);
 
-    // Fetch post details with likes_count and comments_count
+    // Fetch post details with likes_count and threads_count
     const { data: post, error: postError } = await supabase
       .from("posts")
-      .select("id, likes_count, comments_count, tag_id")
+      .select("id, likes_count, threads_count, tag_id")
       .eq("id", postId)
       .single();
 
@@ -17,7 +17,7 @@ export async function calculatePriorityScore(postId: string): Promise<number> {
     }
 
     console.log(
-      `  ✓ Post data fetched: likes=${post.likes_count}, comments=${post.comments_count}`
+      `  ✓ Post data fetched: likes=${post.likes_count}, comments=${post.threads_count}`
     );
 
     // Fetch category weight
@@ -35,7 +35,7 @@ export async function calculatePriorityScore(postId: string): Promise<number> {
     console.log(`  ✓ Category weight: ${categoryWeight}`);
 
     const likesCount = post.likes_count || 0;
-    const commentsCount = post.comments_count || 0;
+    const commentsCount = post.threads_count || 0;
 
     // Priority Score = (Likes × 2) + (Comments × 3) + Category Weight
     const priorityScore = likesCount * 2 + commentsCount * 3 + categoryWeight;

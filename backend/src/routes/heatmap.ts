@@ -128,7 +128,7 @@ router.get("/all", async (req: Request, res: Response) => {
     let query = supabase
       .from("posts")
       .select(
-        "id, title, description, tag_id, location, created_at, likes_count, comments_count"
+        "id, title, description, tag_id, location, created_at, likes_count, threads_count"
       );
 
     // Apply category filter if provided
@@ -168,7 +168,7 @@ router.get("/all", async (req: Request, res: Response) => {
           );
           // Fallback calculation
           priority =
-            (post.likes_count || 0) * 2 + (post.comments_count || 0) * 3 + 1;
+            (post.likes_count || 0) * 2 + (post.threads_count || 0) * 3 + 1;
         }
 
         return {
@@ -190,7 +190,7 @@ router.get("/all", async (req: Request, res: Response) => {
               : null,
           priority: priority,
           likesCount: post.likes_count || 0,
-          commentsCount: post.comments_count || 0,
+          commentsCount: post.threads_count || 0,
           createdAt: post.created_at,
         };
       })
@@ -251,7 +251,7 @@ router.get("/ward/:wardNumber", async (req: Request, res: Response) => {
     let query = supabase
       .from("posts")
       .select(
-        "id, title, description, tag_id, location, created_at, likes_count, comments_count"
+        "id, title, description, tag_id, location, created_at, likes_count, threads_count"
       );
 
     // Apply category filter if provided
@@ -299,7 +299,7 @@ router.get("/ward/:wardNumber", async (req: Request, res: Response) => {
             error
           );
           priority =
-            (post.likes_count || 0) * 2 + (post.comments_count || 0) * 3 + 1;
+            (post.likes_count || 0) * 2 + (post.threads_count || 0) * 3 + 1;
         }
 
         return {
@@ -318,7 +318,7 @@ router.get("/ward/:wardNumber", async (req: Request, res: Response) => {
           },
           priority: priority,
           likesCount: post.likes_count || 0,
-          commentsCount: post.comments_count || 0,
+          commentsCount: post.threads_count || 0,
           createdAt: post.created_at,
         };
       })
@@ -362,7 +362,7 @@ router.get("/summary", async (req: Request, res: Response) => {
 
     const { data: posts, error } = await supabase
       .from("posts")
-      .select("id, tag_id, location, likes_count, comments_count");
+      .select("id, tag_id, location, likes_count, threads_count");
 
     if (error) {
       console.error("❌ Database error:", error);

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { FaCheckCircle, FaClipboardList, FaChartLine } from 'react-icons/fa';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
+import HeatmapSection from '@/components/HeatmapSection';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -208,6 +209,9 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
+
+              {/* HEATMAP SECTION */}
+              <HeatmapSection />
 
               {/* Charts Section */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

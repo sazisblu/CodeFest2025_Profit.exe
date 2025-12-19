@@ -57,7 +57,7 @@ class PostService {
             'tag_id': tagId,
             'image_url': imageUrl,
             'likes_count': 0,
-            'comments_count': 0,
+            'threads_count': 0,
             'created_at': DateTime.now().toIso8601String(),
           })
           .select()
@@ -85,16 +85,16 @@ class PostService {
       return (response as List).map((post) {
         final userData = post['users'];
 
-        // Use the likes_count and comments_count directly from posts table
+        // Use the likes_count and threads_count directly from posts table
         final likesCount = post['likes_count'] as int? ?? 0;
-        final commentsCount = post['comments_count'] as int? ?? 0;
+        final commentsCount = post['threads_count'] as int? ?? 0;
 
         return PostModel.fromJson({
           ...post,
           'user_display_name': userData['display_name'],
           'user_photo_url': userData['photo_url'],
           'likes_count': likesCount,
-          'comments_count': commentsCount,
+          'threads_count': commentsCount,
         });
       }).toList();
     } catch (e) {
@@ -228,7 +228,7 @@ class PostService {
       // Update the posts table with actual count
       await _supabase
           .from('posts')
-          .update({'comments_count': actualCommentsCount})
+          .update({'threads_count': actualCommentsCount})
           .eq('id', postId);
     } catch (e) {
       print('Error adding comment: $e');

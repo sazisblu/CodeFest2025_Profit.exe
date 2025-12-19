@@ -59,7 +59,7 @@ class PostModel {
       userDisplayName: json['user_display_name'] as String?,
       userPhotoUrl: json['user_photo_url'] as String?,
       tag: tagModel,
-      commentsCount: json['comments_count'] as int? ?? 0,
+      commentsCount: json['threads_count'] as int? ?? 0,
     );
   }
 
@@ -73,7 +73,7 @@ class PostModel {
       'tag_id': tagId,
       'image_url': imageUrl,
       'likes': likes,
-      'comments_count': commentsCount,
+      'threads_count': commentsCount,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
     };
