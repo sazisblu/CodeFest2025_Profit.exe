@@ -246,13 +246,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           final similarity = result['data']['similarity'];
 
           print('✨ Thread created for parent post: $parentPostId');
+          print('📊 Response data: ${result['data']}');
+          print('🔑 parentPostId type: ${parentPostId.runtimeType}, value: "$parentPostId"');
 
-          // First pop to go back to home screen with refresh
-          Navigator.of(context).pop(true);
+          // Capture the navigator before popping
+          final navigator = Navigator.of(context);
+          final scaffoldMessenger = ScaffoldMessenger.of(context);
+          
+          // Pop to go back to home screen with refresh
+          navigator.pop(true);
 
           // Show snackbar after navigation
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
+          // Use WidgetsBinding to ensure the pop animation completes
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            scaffoldMessenger.showSnackBar(
               SnackBar(
                 content: Text(
                   '✨ Similar post found (${(similarity * 100).toStringAsFixed(0)}% match)!\nAdded as comment to: "$parentPostTitle"',
@@ -269,10 +276,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       final parentPost = await _postService.getPost(
                         parentPostId,
                       );
-                      if (parentPost != null && mounted) {
+                      print('📦 parentPost result: ${parentPost != null ? "Found" : "Null"}');
+                      if (parentPost != null) {
                         print('✅ Navigating to parent post detail');
-                        Navigator.push(
-                          context,
+                        navigator.push(
                           MaterialPageRoute(
                             builder: (context) =>
                                 PostDetailScreen(post: parentPost),
@@ -280,20 +287,21 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                         );
                       } else {
                         print('❌ Parent post not found');
+                        scaffoldMessenger.showSnackBar(
+                          const SnackBar(content: Text('Could not find parent post')),
+                        );
                       }
                     } catch (e) {
                       print('❌ Error navigating to parent post: $e');
-                      if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error loading post: $e')),
-                        );
-                      }
+                      scaffoldMessenger.showSnackBar(
+                        SnackBar(content: Text('Error loading post: $e')),
+                      );
                     }
                   },
                 ),
               ),
             );
-          }
+          });
         } else {
           // New post was created
           ScaffoldMessenger.of(context).showSnackBar(

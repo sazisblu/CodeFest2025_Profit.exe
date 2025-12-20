@@ -154,7 +154,7 @@ class PostService {
           .from('posts')
           .select('''
             *,
-            users!inner(display_name, photo_url),
+            users(display_name, photo_url),
             tags(*)
           ''')
           .order('created_at', ascending: false);
@@ -168,8 +168,8 @@ class PostService {
 
         return PostModel.fromJson({
           ...post,
-          'user_display_name': userData['display_name'],
-          'user_photo_url': userData['photo_url'],
+          'user_display_name': userData?['display_name'],
+          'user_photo_url': userData?['photo_url'],
           'likes_count': likesCount,
           'threads_count': threadsCount,
         });
@@ -479,7 +479,7 @@ class PostService {
           .from('posts')
           .select('''
             *, 
-            users!inner(display_name, photo_url),
+            users(display_name, photo_url),
             tags(*)
           ''')
           .eq('user_id', userId)
@@ -489,8 +489,8 @@ class PostService {
         final userData = post['users'];
         return PostModel.fromJson({
           ...post,
-          'user_display_name': userData['display_name'],
-          'user_photo_url': userData['photo_url'],
+          'user_display_name': userData?['display_name'],
+          'user_photo_url': userData?['photo_url'],
         });
       }).toList();
     } catch (e) {
@@ -503,11 +503,13 @@ class PostService {
   Future<PostModel?> getPost(String postId) async {
     try {
       print('🔍 Querying post with ID: $postId');
+      print('🔍 Post ID type: ${postId.runtimeType}, value: "$postId"');
+      
       final response = await _supabase
           .from('posts')
           .select('''
             *, 
-            users!inner(display_name, photo_url),
+            users(display_name, photo_url),
             tags(*)
           ''')
           .eq('id', postId)
@@ -519,7 +521,9 @@ class PostService {
       }
 
       print('✅ Post found: ${response['title']}');
+      print('📊 Full response: $response');
       final userData = response['users'];
+      print('👤 User data: $userData');
 
       // Use the likes_count and threads_count directly from posts table
       final likesCount = response['likes_count'] as int? ?? 0;
@@ -527,8 +531,8 @@ class PostService {
 
       return PostModel.fromJson({
         ...response,
-        'user_display_name': userData['display_name'],
-        'user_photo_url': userData['photo_url'],
+        'user_display_name': userData?['display_name'],
+        'user_photo_url': userData?['photo_url'],
         'likes_count': likesCount,
         'threads_count': threadsCount,
       });
