@@ -9,6 +9,7 @@ import '../services/post_service.dart';
 import '../services/tag_service.dart';
 import '../services/ward_detection_service.dart';
 import '../models/tag_model.dart';
+import 'post_detail_screen.dart';
 
 class CreatePostScreen extends StatefulWidget {
   final File? selectedImage;
@@ -221,7 +222,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     try {
       print('Creating post with ward number: $_wardNumber');
-      await _postService.createPost(
+      final result = await _postService.createPost(
         userId: user.id,
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
@@ -234,10 +235,76 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Post created successfully!')),
-        );
-        Navigator.of(context).pop(true);
+        // Check if it was created as a thread or a post
+        final type = result['type'];
+        final message = result['message'];
+
+        if (type == 'thread') {
+          // Thread was created - navigate to parent post
+          final parentPostId = result['data']['parent_post_id'];
+          final parentPostTitle = result['data']['parent_post_title'];
+          final similarity = result['data']['similarity'];
+
+          print('✨ Thread created for parent post: $parentPostId');
+
+          // First pop to go back to home screen with refresh
+          Navigator.of(context).pop(true);
+
+          // Show snackbar after navigation
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  '✨ Similar post found (${(similarity * 100).toStringAsFixed(0)}% match)!\nAdded as comment to: "$parentPostTitle"',
+                ),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'View',
+                  textColor: Colors.white,
+                  onPressed: () async {
+                    // Navigate to the parent post detail
+                    try {
+                      print('🔍 Fetching parent post: $parentPostId');
+                      final parentPost = await _postService.getPost(
+                        parentPostId,
+                      );
+                      if (parentPost != null && mounted) {
+                        print('✅ Navigating to parent post detail');
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                PostDetailScreen(post: parentPost),
+                          ),
+                        );
+                      } else {
+                        print('❌ Parent post not found');
+                      }
+                    } catch (e) {
+                      print('❌ Error navigating to parent post: $e');
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error loading post: $e')),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ),
+            );
+          }
+        } else {
+          // New post was created
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ $message'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+          Navigator.of(context).pop(true);
+        }
       }
     } catch (e) {
       if (mounted) {

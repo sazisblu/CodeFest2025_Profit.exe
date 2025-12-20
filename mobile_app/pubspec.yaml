@@ -41,6 +41,9 @@ dependencies:
   # Supabase
   supabase_flutter: ^2.9.2
 
+  # HTTP client
+  http: ^1.2.0
+
   # State Management
   provider: ^6.1.2
 

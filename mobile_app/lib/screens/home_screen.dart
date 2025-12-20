@@ -57,12 +57,22 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
+      // Increase delay to ensure database has fully updated (especially thread counts)
+      await Future.delayed(const Duration(milliseconds: 500));
       final posts = await _postService.getAllPosts();
+
+      // Debug: Log post count and thread counts
+      print('📊 Loaded ${posts.length} posts');
+      for (var post in posts.take(5)) {
+        print('  - "${post.title}": ${post.threadsCount} replies');
+      }
+
       setState(() {
         _posts = posts;
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ Error loading posts: $e');
       setState(() {
         _isLoading = false;
       });
@@ -270,56 +280,28 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: _loadPosts,
-                    child: ListView.builder(
-                      itemCount: _posts.isEmpty ? 1 : _posts.length + 1, // Always show municipal post
-                      itemBuilder: (context, index) {
-                        // If no regular posts, show municipal post first
-                        if (_posts.isEmpty) {
-                          final municipalPost = _createDummyMunicipalPost();
-                          return MunicipalPostCard(
-                            post: municipalPost,
-                            onTap: () {
-                              // Handle municipal post tap
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Municipal post details coming soon!'),
-                                ),
+                    child: _posts.isEmpty
+                        ? const Center(
+                            child: Text('No issues yet. Create the first one!'),
+                          )
+                        : ListView.builder(
+                            itemCount: _posts.length,
+                            itemBuilder: (context, index) {
+                              final post = _posts[index];
+                              return PostCard(
+                                key: ValueKey(post.id),
+                                post: post,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          PostDetailScreen(post: post),
+                                    ),
+                                  );
+                                },
                               );
                             },
-                          );
-                        }
-                        
-                        // Show municipal post at the end (last index)
-                        if (index == _posts.length) {
-                          final municipalPost = _createDummyMunicipalPost();
-                          return MunicipalPostCard(
-                            post: municipalPost,
-                            onTap: () {
-                              // Handle municipal post tap
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Municipal post details coming soon!'),
-                                ),
-                              );
-                            },
-                          );
-                        }
-                        
-                        // Show regular posts first
-                        final post = _posts[index];
-                        return PostCard(
-                          post: post,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    PostDetailScreen(post: post),
-                              ),
-                            );
-                          },
-                        );
-                      },
                           ),
                   ),
                 ),
@@ -386,6 +368,24 @@ class _PostCardState extends State<PostCard>
     );
 
     _checkIfLiked();
+  }
+
+  @override
+  void didUpdateWidget(PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update counts when the post data changes
+    if (oldWidget.post.id == widget.post.id) {
+      if (oldWidget.post.likes != widget.post.likes) {
+        setState(() {
+          likeCount = widget.post.likes;
+        });
+      }
+      if (oldWidget.post.threadsCount != widget.post.threadsCount) {
+        setState(() {
+          threadCount = widget.post.threadsCount;
+        });
+      }
+    }
   }
 
   Future<void> _checkIfLiked() async {

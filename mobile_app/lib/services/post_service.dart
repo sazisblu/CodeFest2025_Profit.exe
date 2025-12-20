@@ -1,7 +1,10 @@
 import 'dart:io';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/post_model.dart';
 import '../models/thread_model.dart';
+import '../config/api_config.dart';
 
 class PostService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -32,8 +35,71 @@ class PostService {
     }
   }
 
-  // Create a new post
-  Future<PostModel> createPost({
+  // Create a new post with semantic similarity check via backend API
+  Future<Map<String, dynamic>> createPost({
+    required String userId,
+    required String title,
+    required String description,
+    required String location,
+    required String tagId,
+    File? imageFile,
+    double? latitude,
+    double? longitude,
+    int? wardNumber,
+  }) async {
+    try {
+      // Upload image first if provided
+      String? imageUrl;
+      if (imageFile != null) {
+        print('Uploading image...');
+        imageUrl = await uploadImage(imageFile);
+        print('Image uploaded: $imageUrl');
+      }
+
+      print(
+        'Creating post with semantic similarity check - wardNumber: $wardNumber',
+      );
+
+      // Call backend API to create post with semantic similarity check
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.postsEndpoint}'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'user_id': userId,
+          'title': title,
+          'description': description,
+          'location': location,
+          'tag_id': tagId,
+          'image_url': imageUrl,
+          'latitude': latitude,
+          'longitude': longitude,
+          'ward_no': wardNumber,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        print('Post creation response: $data');
+
+        // Return the full response including type (post or thread) and similarity info
+        return {
+          'success': true,
+          'type': data['type'], // 'post' or 'thread'
+          'message': data['message'],
+          'data': data['data'],
+        };
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to create post');
+      }
+    } catch (e) {
+      print('Error creating post: $e');
+      rethrow;
+    }
+  }
+
+  // Legacy method for backward compatibility (creates post directly without similarity check)
+  Future<PostModel> createPostDirect({
     required String userId,
     required String title,
     required String description,
@@ -51,7 +117,7 @@ class PostService {
       }
 
       print(
-        'PostService.createPost - wardNumber: $wardNumber (type: ${wardNumber.runtimeType})',
+        'PostService.createPostDirect - wardNumber: $wardNumber (type: ${wardNumber.runtimeType})',
       );
 
       final response = await _supabase
@@ -436,6 +502,7 @@ class PostService {
   // Get a single post
   Future<PostModel?> getPost(String postId) async {
     try {
+      print('🔍 Querying post with ID: $postId');
       final response = await _supabase
           .from('posts')
           .select('''
@@ -444,16 +511,30 @@ class PostService {
             tags(*)
           ''')
           .eq('id', postId)
-          .single();
+          .maybeSingle();
 
+      if (response == null) {
+        print('❌ No post found with ID: $postId');
+        return null;
+      }
+
+      print('✅ Post found: ${response['title']}');
       final userData = response['users'];
+
+      // Use the likes_count and threads_count directly from posts table
+      final likesCount = response['likes_count'] as int? ?? 0;
+      final threadsCount = response['threads_count'] as int? ?? 0;
+
       return PostModel.fromJson({
         ...response,
         'user_display_name': userData['display_name'],
         'user_photo_url': userData['photo_url'],
+        'likes_count': likesCount,
+        'threads_count': threadsCount,
       });
-    } catch (e) {
-      print('Error getting post: $e');
+    } catch (e, stackTrace) {
+      print('❌ Error getting post: $e');
+      print('Stack trace: $stackTrace');
       return null;
     }
   }
