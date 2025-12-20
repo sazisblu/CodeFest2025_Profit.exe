@@ -4,6 +4,7 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import issuesRoutes from "./routes/issues";
 import heatmapRoutes from "./routes/heatmap";
+import postsRoutes from "./routes/posts";
 import {
   adminLogin,
   verifyAdminToken,
@@ -43,6 +44,9 @@ app.use("/api", issuesRoutes);
 
 // Import and use heatmap routes
 app.use("/api/heatmap", heatmapRoutes);
+
+// Import and use posts routes
+app.use("/api", postsRoutes);
 
 // Start server
 app.listen(port, () => {

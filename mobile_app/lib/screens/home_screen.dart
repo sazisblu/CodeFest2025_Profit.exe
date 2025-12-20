@@ -36,12 +36,22 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
+      // Increase delay to ensure database has fully updated (especially thread counts)
+      await Future.delayed(const Duration(milliseconds: 500));
       final posts = await _postService.getAllPosts();
+
+      // Debug: Log post count and thread counts
+      print('📊 Loaded ${posts.length} posts');
+      for (var post in posts.take(5)) {
+        print('  - "${post.title}": ${post.threadsCount} replies');
+      }
+
       setState(() {
         _posts = posts;
         _isLoading = false;
       });
     } catch (e) {
+      print('❌ Error loading posts: $e');
       setState(() {
         _isLoading = false;
       });
@@ -258,6 +268,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             itemBuilder: (context, index) {
                               final post = _posts[index];
                               return PostCard(
+                                key: ValueKey(post.id),
                                 post: post,
                                 onTap: () {
                                   Navigator.push(
@@ -336,6 +347,24 @@ class _PostCardState extends State<PostCard>
     );
 
     _checkIfLiked();
+  }
+
+  @override
+  void didUpdateWidget(PostCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update counts when the post data changes
+    if (oldWidget.post.id == widget.post.id) {
+      if (oldWidget.post.likes != widget.post.likes) {
+        setState(() {
+          likeCount = widget.post.likes;
+        });
+      }
+      if (oldWidget.post.threadsCount != widget.post.threadsCount) {
+        setState(() {
+          threadCount = widget.post.threadsCount;
+        });
+      }
+    }
   }
 
   Future<void> _checkIfLiked() async {

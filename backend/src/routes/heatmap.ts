@@ -19,28 +19,32 @@ function extractCoordinates(location: any): {
   latitude: number;
   longitude: number;
 } {
-  let latitude: number;
-  let longitude: number;
+  let latitude: number = 27.6715; // Default Bhaktapur coordinates
+  let longitude: number = 85.4298;
 
   if (typeof location === "string") {
     try {
       const parsed = JSON.parse(location);
-      latitude = parsed.latitude || parsed.lat;
-      longitude = parsed.longitude || parsed.lon || parsed.lng;
+      latitude = parsed.latitude || parsed.lat || latitude;
+      longitude = parsed.longitude || parsed.lon || parsed.lng || longitude;
     } catch {
       const parts = location.split(",");
       if (parts.length === 2) {
-        latitude = parseFloat(parts[0].trim());
-        longitude = parseFloat(parts[1].trim());
+        const lat = parseFloat(parts[0].trim());
+        const lon = parseFloat(parts[1].trim());
+        if (!isNaN(lat) && !isNaN(lon)) {
+          latitude = lat;
+          longitude = lon;
+        }
       }
     }
   } else if (typeof location === "object" && location !== null) {
-    latitude = location.latitude || location.lat;
-    longitude = location.longitude || location.lon || location.lng;
+    latitude = location.latitude || location.lat || latitude;
+    longitude = location.longitude || location.lon || location.lng || longitude;
   }
 
-  // Use default Bhaktapur coordinates if location is invalid
-  if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+  // Validate and use default Bhaktapur coordinates if location is invalid
+  if (isNaN(latitude) || isNaN(longitude)) {
     latitude = 27.6715;
     longitude = 85.4298;
   }
