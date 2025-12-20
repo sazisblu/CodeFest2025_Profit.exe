@@ -134,6 +134,7 @@ class PostService {
             'ward_no': wardNumber,
             'likes_count': 0,
             'threads_count': 0,
+            'threads_count': 0,
             'created_at': DateTime.now().toIso8601String(),
           })
           .select()
@@ -162,6 +163,7 @@ class PostService {
       return (response as List).map((post) {
         final userData = post['users'];
 
+        // Use the likes_count and threads_count directly from posts table
         // Use the likes_count and threads_count directly from posts table
         final likesCount = post['likes_count'] as int? ?? 0;
         final threadsCount = post['threads_count'] as int? ?? 0;

@@ -25,3 +25,24 @@ export interface Issue {
   timeAgo: string;
   recentReports: Report[];
 }
+
+export interface HeatmapIssue {
+  id: string;
+  title: string;
+  description: string;
+  location: string;
+  latitude: number;
+  longitude: number;
+  ward: number;
+  tag_id: string;
+  created_at: string;
+  likes_count?: number;
+  threads_count?: number;
+  priority: number;
+}
+
+export interface WardData {
+  wardNumber: number;
+  issueCount: number;
+  coordinates: [number, number][];
+}

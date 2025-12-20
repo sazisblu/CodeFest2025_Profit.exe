@@ -113,6 +113,40 @@ body {
   border: 2px solid #e6f2ff;
 }
 
+/* Leaflet Map Styles */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.leaflet-control-zoom {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom a {
+  border-radius: 0;
+  font-size: 18px;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.leaflet-popup-tip {
+  background: white;
+  border: none;
+}
+
+.leaflet-div-icon {
+  background: transparent;
+  border: none;
+}
+
 .note-lines {
   background-image: linear-gradient(rgba(25,41,92,0.03) 1px, transparent 1px);
   background-size: 100% 28px;

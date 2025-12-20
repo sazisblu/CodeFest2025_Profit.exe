@@ -4,7 +4,9 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import issuesRoutes from "./routes/issues";
 import heatmapRoutes from "./routes/heatmap";
-import postsRoutes from "./routes/posts";
+import wardsRoutes from "./routes/wards";
+import tagsRoutes from "./routes/tags";
+import priorityDistRoutes from "./routes/priority_dist";
 import {
   adminLogin,
   verifyAdminToken,
@@ -45,8 +47,14 @@ app.use("/api", issuesRoutes);
 // Import and use heatmap routes
 app.use("/api/heatmap", heatmapRoutes);
 
-// Import and use posts routes
-app.use("/api", postsRoutes);
+// Import and use wards routes  
+app.use("/api/wards", wardsRoutes);
+
+// Import and use tags routes
+app.use("/api/tags", tagsRoutes);
+
+// Import and use priority distribution routes
+app.use("/api/priority_dist", priorityDistRoutes);
 
 // Start server
 app.listen(port, () => {

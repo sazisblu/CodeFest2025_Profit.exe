@@ -34,7 +34,7 @@ router.get("/issues", async (req: Request, res: Response) => {
         location,
         description,
         likes_count,
-        comments_count,
+        threads_count,
         created_at,
         user_id,
         tag_id,
@@ -90,7 +90,7 @@ router.get("/issues", async (req: Request, res: Response) => {
           const priorityScore = await calculatePriorityScore(post.id);
           console.log(`    ✓ Priority score: ${priorityScore}`);
 
-          const commentCount = post.comments_count || 0;
+          const commentCount = post.threads_count || 0;
           const likesCount = post.likes_count || 0;
           const tagName = post.tag_id ? tagsMap[post.tag_id] || "Other" : "Other";
 
@@ -162,7 +162,7 @@ router.get("/issues/:id", async (req: Request, res: Response) => {
         location,
         description,
         likes_count,
-        comments_count,
+        threads_count,
         created_at,
         user_id,
         tag_id,
@@ -196,7 +196,7 @@ router.get("/issues/:id", async (req: Request, res: Response) => {
     }
 
     const priorityScore = await calculatePriorityScore(id);
-    const commentCount = post.comments_count || 0;
+    const commentCount = post.threads_count || 0;
     const likesCount = post.likes_count || 0;
 
     res.json({
