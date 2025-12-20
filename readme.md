@@ -24,7 +24,7 @@ Users submit community issues with:
 **Priority Score Calculation:**
 
 ```
-Priority = (Number of Likes × 1) + (Posts by User × 2)
+Priority = (Number of Likes × 1) + (Posts by User × 2) + Category Weight
 ```
 
 Higher scores = More community support
