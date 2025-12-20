@@ -499,6 +499,38 @@ class PostService {
     }
   }
 
+  // Get posts created by user or posts they've interacted with (via backend)
+  Future<List<PostModel>> getUserActivityPosts(String userId) async {
+    try {
+      print('🔍 Fetching user activity posts for user: $userId');
+      
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/posts/user/$userId/activity'),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        print('✅ Received ${(data['data'] as List).length} activity posts');
+        
+        return (data['data'] as List).map((post) {
+          final userData = post['users'];
+          return PostModel.fromJson({
+            ...post,
+            'user_display_name': userData?['display_name'],
+            'user_photo_url': userData?['photo_url'],
+          });
+        }).toList();
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Failed to fetch user activity posts');
+      }
+    } catch (e) {
+      print('❌ Error getting user activity posts: $e');
+      return [];
+    }
+  }
+
   // Get a single post
   Future<PostModel?> getPost(String postId) async {
     try {

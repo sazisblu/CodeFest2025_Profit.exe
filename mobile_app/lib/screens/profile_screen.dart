@@ -44,7 +44,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoadingPosts = true);
 
     try {
-      final posts = await _postService.getAllPosts();
+      // Use the new method to get posts user created or interacted with
+      final posts = await _postService.getUserActivityPosts(_currentUser!.id);
       setState(() {
         _userPosts = posts;
         _isLoadingPosts = false;
@@ -809,6 +810,89 @@ class _PostCardState extends State<PostCard>
               style: const TextStyle(fontSize: 13, color: Color(0xFF666666)),
             ),
             const SizedBox(height: 12),
+
+            // User's comment on this post (if exists)
+            if (widget.post.userComment != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F9FF),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF2E4F99).withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.comment_rounded,
+                          size: 14,
+                          color: const Color(0xFF2E4F99),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Your thread:',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF2E4F99),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          _formatDate(widget.post.userComment!.createdAt),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFF999999),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.post.userComment!.content,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF333333),
+                        height: 1.4,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (widget.post.userComment!.imageUrl != null &&
+                        widget.post.userComment!.imageUrl!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          widget.post.userComment!.imageUrl!,
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              width: 100,
+                              height: 100,
+                              color: Colors.grey.shade200,
+                              child: Icon(
+                                Icons.broken_image,
+                                color: Colors.grey.shade400,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
 
             // Action buttons row
             Row(

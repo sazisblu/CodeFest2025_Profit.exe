@@ -9,8 +9,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.white,
-      elevation: 0,
-      scrolledUnderElevation: 0,
+      surfaceTintColor: Colors.transparent,
+      elevation: 4,
+      scrolledUnderElevation: 4,
+      shadowColor: Colors.black.withOpacity(0.15),
       automaticallyImplyLeading: false,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(

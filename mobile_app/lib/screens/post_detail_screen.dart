@@ -811,6 +811,26 @@ class _PostDetailScreenState extends State<PostDetailScreen>
                         // Input row
                         Row(
                           children: [
+                            // Reply text field
+                            Expanded(
+                              child: TextField(
+                                controller: _replyController,
+                                decoration: const InputDecoration(
+                                  hintText: 'Reply to this thread...',
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.all(
+                                      Radius.circular(25),
+                                    ),
+                                  ),
+                                  contentPadding: EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                ),
+                                maxLines: null,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             // Image picker button
                             Container(
                               width: 40,
@@ -831,60 +851,40 @@ class _PostDetailScreenState extends State<PostDetailScreen>
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // Reply text field
-                            Expanded(
-                              child: TextField(
-                                controller: _replyController,
-                                decoration: const InputDecoration(
-                                  hintText: 'Reply to this thread...',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.all(
-                                      Radius.circular(25),
-                                    ),
-                                  ),
-                                  contentPadding: EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                ),
-                                maxLines: null,
+                            // Send button
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: _isAddingReply
+                                    ? Colors.grey.shade400
+                                    : const Color(0xFF2E4F99),
+                                shape: BoxShape.circle,
                               ),
+                              child: _isAddingReply
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(12.0),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    )
+                                  : IconButton(
+                                      icon: const Icon(
+                                        Icons.send_rounded,
+                                        color: Colors.white,
+                                        size: 22,
+                                      ),
+                                      onPressed: _addReply,
+                                      padding: const EdgeInsets.only(left: 2),
+                                    ),
                             ),
                           ],
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Send button
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: _isAddingReply
-                          ? Colors.grey.shade400
-                          : const Color(0xFF2E4F99),
-                      shape: BoxShape.circle,
-                    ),
-                    child: _isAddingReply
-                        ? const Padding(
-                            padding: EdgeInsets.all(12.0),
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
-                            ),
-                          )
-                        : IconButton(
-                            icon: const Icon(
-                              Icons.send_rounded,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                            onPressed: _addReply,
-                            padding: const EdgeInsets.only(left: 2),
-                          ),
                   ),
                 ],
               ),

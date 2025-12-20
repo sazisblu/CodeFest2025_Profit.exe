@@ -279,3 +279,119 @@ export const getPostById = async (req: Request, res: Response) => {
     });
   }
 };
+
+/**
+ * Get posts created by user or posts they've interacted with (commented on)
+ */
+export const getUserActivityPosts = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    console.log(`🔍 Fetching posts for user activity: ${userId}`);
+
+    // Get posts created by the user
+    const { data: userPosts, error: postsError } = await supabase
+      .from('posts')
+      .select(`
+        *,
+        users (display_name, photo_url),
+        tags (*)
+      `)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (postsError) {
+      console.error('Error fetching user posts:', postsError);
+      throw postsError;
+    }
+
+    // Get posts where user has commented (threads) with the comment details
+    const { data: userThreads, error: threadsError } = await supabase
+      .from('post_threads')
+      .select('post_id, content, image_url, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (threadsError) {
+      console.error('Error fetching user threads:', threadsError);
+      throw threadsError;
+    }
+
+    // Create a map of post_id to user's latest comment
+    const userCommentMap = new Map();
+    userThreads?.forEach(thread => {
+      if (!userCommentMap.has(thread.post_id)) {
+        userCommentMap.set(thread.post_id, {
+          content: thread.content,
+          image_url: thread.image_url,
+          created_at: thread.created_at,
+        });
+      }
+    });
+
+    // Get unique post IDs from threads
+    const threadedPostIds = [...new Set(userThreads?.map(t => t.post_id) || [])];
+
+    // Fetch the posts user has commented on
+    let commentedPosts: any[] = [];
+    if (threadedPostIds.length > 0) {
+      const { data: postsFromThreads, error: threadPostsError } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          users (display_name, photo_url),
+          tags (*)
+        `)
+        .in('id', threadedPostIds)
+        .order('created_at', { ascending: false });
+
+      if (threadPostsError) {
+        console.error('Error fetching threaded posts:', threadPostsError);
+        throw threadPostsError;
+      }
+
+      commentedPosts = postsFromThreads || [];
+    }
+
+    // Combine and deduplicate posts, adding user's comment where applicable
+    const allPostsMap = new Map();
+    
+    // Add user's own posts
+    userPosts?.forEach(post => {
+      allPostsMap.set(post.id, { ...post, user_comment: null });
+    });
+
+    // Add posts user commented on (if not already added), include their comment
+    commentedPosts.forEach(post => {
+      const userComment = userCommentMap.get(post.id);
+      if (!allPostsMap.has(post.id)) {
+        allPostsMap.set(post.id, { ...post, user_comment: userComment });
+      } else {
+        // If post was created by user but also has comments, add the comment
+        const existingPost = allPostsMap.get(post.id);
+        allPostsMap.set(post.id, { ...existingPost, user_comment: userComment });
+      }
+    });
+
+    // Convert to array and sort by created_at
+    const allPosts = Array.from(allPostsMap.values())
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    console.log(`✅ Found ${allPosts.length} posts for user activity`);
+
+    res.json({
+      success: true,
+      data: allPosts,
+    });
+  } catch (error) {
+    console.error('❌ Error fetching user activity posts:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+};

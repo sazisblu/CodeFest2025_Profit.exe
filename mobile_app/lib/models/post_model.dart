@@ -20,6 +20,9 @@ class PostModel {
   // Tag details (from join)
   final TagModel? tag;
 
+  // User's comment on this post (for activity view)
+  final UserComment? userComment;
+
   PostModel({
     required this.id,
     required this.userId,
@@ -35,12 +38,18 @@ class PostModel {
     this.userDisplayName,
     this.userPhotoUrl,
     this.tag,
+    this.userComment,
   });
 
   factory PostModel.fromJson(Map<String, dynamic> json) {
     TagModel? tagModel;
     if (json['tags'] != null) {
       tagModel = TagModel.fromJson(json['tags']);
+    }
+
+    UserComment? userComment;
+    if (json['user_comment'] != null) {
+      userComment = UserComment.fromJson(json['user_comment']);
     }
 
     return PostModel(
@@ -60,6 +69,7 @@ class PostModel {
       userPhotoUrl: json['user_photo_url'] as String?,
       tag: tagModel,
       threadsCount: json['threads_count'] as int? ?? 0,
+      userComment: userComment,
     );
   }
 
@@ -76,6 +86,34 @@ class PostModel {
       'threads_count': threadsCount,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
+    };
+  }
+}
+
+class UserComment {
+  final String content;
+  final String? imageUrl;
+  final DateTime createdAt;
+
+  UserComment({
+    required this.content,
+    this.imageUrl,
+    required this.createdAt,
+  });
+
+  factory UserComment.fromJson(Map<String, dynamic> json) {
+    return UserComment(
+      content: json['content'] as String,
+      imageUrl: json['image_url'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'content': content,
+      'image_url': imageUrl,
+      'created_at': createdAt.toIso8601String(),
     };
   }
 }

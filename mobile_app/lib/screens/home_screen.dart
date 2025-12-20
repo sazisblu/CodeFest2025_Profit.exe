@@ -186,7 +186,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 decoration: const BoxDecoration(
                                   shape: BoxShape.circle,
                                   gradient: LinearGradient(
-                                    colors: [Colors.orange, Colors.deepOrange],
+                                    colors: [Color(0xFF1976D2), Color(0xFFE8F0FF)],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
