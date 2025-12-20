@@ -26,11 +26,18 @@ export default function HeatmapSection({ onCategoryChange, onWardChange }: Heatm
 
   const categories = [
     { id: '', name: 'All Categories' },
-    { id: '1', name: 'Road Damage' },
-    { id: '2', name: 'Waste Management' },
-    { id: '3', name: 'Water Supply' },
-    { id: '4', name: 'Street Light' },
-    { id: '5', name: 'Drainage' },
+    { id: '19344d1e-059e-43c5-9cfd-1b75b0c7881f', name: 'Education' },
+    { id: '233f9adf-5c19-4d39-8452-904f3a33c77f', name: 'Street Lighting' },
+    { id: '29b499a4-864c-4804-a1fb-c8bbaa8c4aaa', name: 'Waste Management' },
+    { id: '32a8cb09-a8b3-48cb-a99b-4ed1c0317d1b', name: 'Public Safety' },
+    { id: '7690ef81-96ef-4575-9e3e-cf49d4f2bf83', name: 'Sanitation' },
+    { id: '7f61ac8e-34c8-4554-a052-67039207a572', name: 'Water Supply' },
+    { id: '87a5dd77-8e4e-40f0-9221-bff6912bca1d', name: 'Roads & Transportation' },
+    { id: 'a076cd97-63b0-4005-99f8-03f5e5fe2fcd', name: 'Drainage' },
+    { id: 'a65ae199-1384-40fc-ab1c-386baef41781', name: 'Infrastructure' },
+    { id: 'a6a07259-77e0-4947-91b8-d1961c978c67', name: 'Electricity' },
+    { id: 'c39db7a6-a2a0-4f8d-8fba-cbeb1f792661', name: 'Parks & Recreation' },
+    { id: 'ed514dad-6c40-4e22-aa3e-29a2e94244a4', name: 'Healthcare' },
   ];
 
   const wards = [
@@ -68,9 +75,11 @@ export default function HeatmapSection({ onCategoryChange, onWardChange }: Heatm
       const result = await response.json();
       console.log('Received heatmap data:', result);
       
-      // Ensure we have an array of data
-      const dataArray = Array.isArray(result) ? result : [];
+      // Extract issues array from API response
+      const dataArray = result.success && Array.isArray(result.issues) ? result.issues : [];
       setHeatmapData(dataArray);
+      
+      console.log(`Loaded ${dataArray.length} issues for map display`);
       
       if (dataArray.length === 0) {
         setError('No issues found for the selected filters');
@@ -126,7 +135,7 @@ export default function HeatmapSection({ onCategoryChange, onWardChange }: Heatm
               <option key={category.id} value={category.id}>
                 {category.name}
               </option>
-            ))}
+            ))} 
           </select>
         </div>
         

@@ -13,43 +13,6 @@ const { findWardInBhaktapur } = require(wardServicePath);
 const router: Router = express.Router();
 
 /**
- * Helper function to extract latitude and longitude from location field
- */
-function extractCoordinates(location: any): {
-  latitude: number;
-  longitude: number;
-} {
-  let latitude: number;
-  let longitude: number;
-
-  if (typeof location === "string") {
-    try {
-      const parsed = JSON.parse(location);
-      latitude = parsed.latitude || parsed.lat;
-      longitude = parsed.longitude || parsed.lon || parsed.lng;
-    } catch {
-      const parts = location.split(",");
-      if (parts.length === 2) {
-        latitude = parseFloat(parts[0].trim());
-        longitude = parseFloat(parts[1].trim());
-      }
-    }
-  } else if (typeof location === "object" && location !== null) {
-    latitude = location.latitude || location.lat;
-    longitude = location.longitude || location.lon || location.lng;
-  }
-
-  // Use default Bhaktapur coordinates if location is invalid
-  if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
-    latitude = 27.6715;
-    longitude = 85.4298;
-  }
-
-  console.log("🗺️ latitude and logitude:", latitude, longitude);
-  return { latitude, longitude };
-}
-
-/**
  * Helper function to generate summary statistics
  */
 function generateSummaryStats(issues: any[]) {
@@ -62,8 +25,8 @@ function generateSummaryStats(issues: any[]) {
   };
 
   issues.forEach((issue) => {
-    const ward = issue.ward?.number;
-    const category = issue.tagId;
+    const ward = issue.ward;
+    const category = issue.tag_id;
 
     // Total priority
     summary.totalPriority += issue.priority;
@@ -119,22 +82,25 @@ router.get("/all", async (req: Request, res: Response) => {
     const { category } = req.query;
 
     console.log(
-      `🗺️  [/api/heatmap/all] Fetching all issues${
+      `🗺️ [/api/heatmap/all] Fetching all issues${
         category ? ` for category: ${category}` : ""
       }`
     );
 
-    // Build the query
+    // Build the query - NOW INCLUDING latitude, longitude, ward_no columns
     let query = supabase
       .from("posts")
       .select(
-        "id, title, description, tag_id, location, created_at, likes_count, threads_count"
+        "id, title, description, tag_id, location, latitude, longitude, ward_no, created_at, likes_count, threads_count"
       );
 
     // Apply category filter if provided
     if (category) {
       query = query.eq("tag_id", category);
     }
+
+    // Only get posts that have coordinates
+    query = query.not("latitude", "is", null).not("longitude", "is", null);
 
     const { data: posts, error } = await query;
 
@@ -143,19 +109,29 @@ router.get("/all", async (req: Request, res: Response) => {
       return res.status(500).json({
         success: false,
         error: "Failed to fetch posts from database",
+        details: error.message,
       });
     }
 
-    console.log(`✓ Fetched ${posts.length} posts from database`);
+    console.log(`✓ Fetched ${posts.length} posts with coordinates from database`);
 
-    // Process each post to add ward information and calculate priority
+    // Process each post
     const processedPosts = await Promise.all(
       posts.map(async (post) => {
-        // Extract coordinates
-        const { latitude, longitude } = extractCoordinates(post.location);
+        // Use the latitude and longitude directly from database columns
+        const latitude = post.latitude;
+        const longitude = post.longitude;
 
-        // Find ward for this post's location
-        const wardInfo = findWardInBhaktapur(latitude, longitude);
+        // Use ward_no if available, otherwise calculate it
+        let wardNumber = post.ward_no;
+        
+        if (!wardNumber && latitude && longitude) {
+          // Fallback: calculate ward using ward detection service
+          const wardInfo = findWardInBhaktapur(latitude, longitude);
+          if (wardInfo.success && wardInfo.inMunicipality) {
+            wardNumber = wardInfo.ward.number;
+          }
+        }
 
         // Calculate priority using the priority service
         let priority = 0;
@@ -163,7 +139,7 @@ router.get("/all", async (req: Request, res: Response) => {
           priority = await calculatePriorityScore(post.id);
         } catch (error) {
           console.error(
-            `⚠️  Error calculating priority for post ${post.id}:`,
+            `⚠️ Error calculating priority for post ${post.id}:`,
             error
           );
           // Fallback calculation
@@ -175,44 +151,38 @@ router.get("/all", async (req: Request, res: Response) => {
           id: post.id,
           title: post.title,
           description: post.description,
-          tagId: post.tag_id,
-          location: {
-            latitude: latitude,
-            longitude: longitude,
-          },
-          ward:
-            wardInfo.success && wardInfo.inMunicipality
-              ? {
-                  number: wardInfo.ward.number,
-                  name: wardInfo.ward.name,
-                  district: wardInfo.ward.district,
-                }
-              : null,
+          location: post.location,
+          latitude: latitude,
+          longitude: longitude,
+          ward: wardNumber,
+          tag_id: post.tag_id,
           priority: priority,
-          likesCount: post.likes_count || 0,
-          commentsCount: post.threads_count || 0,
-          createdAt: post.created_at,
+          likes_count: post.likes_count || 0,
+          threads_count: post.threads_count || 0,
+          created_at: post.created_at,
         };
       })
     );
 
-    // Generate summary statistics
-    const summary = generateSummaryStats(processedPosts);
+    // Filter out posts without valid coordinates or ward
+    const validPosts = processedPosts.filter(post => 
+      post.latitude && post.longitude && post.ward
+    );
 
     console.log(
-      `✓ Processed ${processedPosts.length} posts with ward information`
+      `✓ Processed ${validPosts.length} valid posts with coordinates and ward information`
     );
 
     res.json({
       success: true,
-      count: processedPosts.length,
+      count: validPosts.length,
       filter: {
         category: category || "all",
         ward: "all",
       },
-      issues: processedPosts,
-      summary: summary,
+      issues: validPosts,
     });
+
   } catch (error) {
     console.error("❌ Error in heatmap/all API:", error);
     res.status(500).json({
@@ -242,7 +212,7 @@ router.get("/ward/:wardNumber", async (req: Request, res: Response) => {
     }
 
     console.log(
-      `🗺️  [/api/heatmap/ward/${wardNum}] Fetching issues${
+      `🗺️ [/api/heatmap/ward/${wardNum}] Fetching issues${
         category ? ` for category: ${category}` : ""
       }`
     );
@@ -251,8 +221,11 @@ router.get("/ward/:wardNumber", async (req: Request, res: Response) => {
     let query = supabase
       .from("posts")
       .select(
-        "id, title, description, tag_id, location, created_at, likes_count, threads_count"
-      );
+        "id, title, description, tag_id, location, latitude, longitude, ward_no, created_at, likes_count, threads_count"
+      )
+      .eq("ward_no", wardNum)  // Filter by ward_no column
+      .not("latitude", "is", null)
+      .not("longitude", "is", null);
 
     // Apply category filter if provided
     if (category) {
@@ -266,36 +239,22 @@ router.get("/ward/:wardNumber", async (req: Request, res: Response) => {
       return res.status(500).json({
         success: false,
         error: "Failed to fetch posts from database",
+        details: error.message,
       });
     }
 
-    console.log(`✓ Fetched ${posts.length} posts from database`);
+    console.log(`✓ Fetched ${posts.length} posts for ward ${wardNum} from database`);
 
-    // Process and filter posts by ward
+    // Process posts
     const processedPosts = await Promise.all(
       posts.map(async (post) => {
-        // Extract coordinates
-        const { latitude, longitude } = extractCoordinates(post.location);
-
-        // Find ward for this post's location
-        const wardInfo = findWardInBhaktapur(latitude, longitude);
-
-        // Skip posts not in the requested ward
-        if (
-          !wardInfo.success ||
-          !wardInfo.inMunicipality ||
-          wardInfo.ward.number !== wardNum
-        ) {
-          return null;
-        }
-
         // Calculate priority using the priority service
         let priority = 0;
         try {
           priority = await calculatePriorityScore(post.id);
         } catch (error) {
           console.error(
-            `⚠️  Error calculating priority for post ${post.id}:`,
+            `⚠️ Error calculating priority for post ${post.id}:`,
             error
           );
           priority =
@@ -306,42 +265,31 @@ router.get("/ward/:wardNumber", async (req: Request, res: Response) => {
           id: post.id,
           title: post.title,
           description: post.description,
-          tagId: post.tag_id,
-          location: {
-            latitude: latitude,
-            longitude: longitude,
-          },
-          ward: {
-            number: wardInfo.ward.number,
-            name: wardInfo.ward.name,
-            district: wardInfo.ward.district,
-          },
+          location: post.location,
+          latitude: post.latitude,
+          longitude: post.longitude,
+          ward: post.ward_no,
+          tag_id: post.tag_id,
           priority: priority,
-          likesCount: post.likes_count || 0,
-          commentsCount: post.threads_count || 0,
-          createdAt: post.created_at,
+          likes_count: post.likes_count || 0,
+          threads_count: post.threads_count || 0,
+          created_at: post.created_at,
         };
       })
     );
 
-    // Filter out nulls (posts not in requested ward)
-    const wardPosts = processedPosts.filter((post) => post !== null);
-
-    // Generate summary statistics
-    const summary = generateSummaryStats(wardPosts);
-
-    console.log(`✓ Found ${wardPosts.length} posts in ward ${wardNum}`);
+    console.log(`✓ Processed ${processedPosts.length} posts for ward ${wardNum}`);
 
     res.json({
       success: true,
-      count: wardPosts.length,
+      count: processedPosts.length,
       filter: {
         category: category || "all",
         ward: wardNum,
       },
-      issues: wardPosts,
-      summary: summary,
+      issues: processedPosts,
     });
+
   } catch (error) {
     console.error("❌ Error in heatmap/ward API:", error);
     res.status(500).json({
@@ -358,17 +306,20 @@ router.get("/ward/:wardNumber", async (req: Request, res: Response) => {
  */
 router.get("/summary", async (req: Request, res: Response) => {
   try {
-    console.log("🗺️  [/api/heatmap/summary] Fetching aggregated statistics");
+    console.log("🗺️ [/api/heatmap/summary] Fetching aggregated statistics");
 
     const { data: posts, error } = await supabase
       .from("posts")
-      .select("id, tag_id, location, likes_count, threads_count");
+      .select("id, tag_id, latitude, longitude, ward_no, likes_count, threads_count")
+      .not("latitude", "is", null)
+      .not("longitude", "is", null);
 
     if (error) {
       console.error("❌ Database error:", error);
       return res.status(500).json({
         success: false,
         error: "Failed to fetch posts",
+        details: error.message,
       });
     }
 
@@ -378,19 +329,13 @@ router.get("/summary", async (req: Request, res: Response) => {
     const categoryStats: Record<string, any> = {};
 
     for (const post of posts) {
-      // Extract coordinates
-      const { latitude, longitude } = extractCoordinates(post.location);
+      const wardNum = post.ward_no;
 
-      const wardInfo = findWardInBhaktapur(latitude, longitude);
-
-      if (wardInfo.success && wardInfo.inMunicipality) {
-        const wardNum = wardInfo.ward.number;
-
+      if (wardNum) {
         // Initialize ward stats
         if (!wardStats[wardNum]) {
           wardStats[wardNum] = {
             ward: wardNum,
-            name: wardInfo.ward.name,
             issueCount: 0,
             totalPriority: 0,
             avgPriority: 0,
@@ -431,7 +376,7 @@ router.get("/summary", async (req: Request, res: Response) => {
           categoryStats[category].totalPriority += priority;
         } catch (error) {
           console.error(
-            `⚠️  Error calculating priority for post ${post.id}:`,
+            `⚠️ Error calculating priority for post ${post.id}:`,
             error
           );
         }
@@ -462,6 +407,7 @@ router.get("/summary", async (req: Request, res: Response) => {
       byWard: Object.values(wardStats).sort((a, b) => a.ward - b.ward),
       byCategory: Object.values(categoryStats),
     });
+
   } catch (error) {
     console.error("❌ Error fetching summary stats:", error);
     res.status(500).json({
