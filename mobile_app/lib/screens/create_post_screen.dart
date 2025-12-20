@@ -10,6 +10,7 @@ import '../services/tag_service.dart';
 import '../services/ward_detection_service.dart';
 import '../models/tag_model.dart';
 import 'post_detail_screen.dart';
+import 'location_picker_screen.dart';
 
 class CreatePostScreen extends StatefulWidget {
   final File? selectedImage;
@@ -37,6 +38,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
   bool _isLoading = false;
   bool _isLoadingTags = true;
   bool _isDetectingWard = false;
+  bool _useAutoLocation = true;
   File? _selectedImage;
   double? _latitude;
   double? _longitude;
@@ -74,7 +76,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     super.initState();
     _selectedImage = widget.selectedImage;
     _loadTags();
-    _setCurrentLocation();
+    if (_useAutoLocation) {
+      _setCurrentLocation();
+    }
   }
 
   Future<void> _setCurrentLocation() async {
@@ -484,40 +488,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             _buildSectionCard(
               title: 'Location',
               icon: Icons.location_on,
-              child: TextFormField(
-                controller: _locationController,
-                decoration: InputDecoration(
-                  hintText: 'Where is this located?',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.all(16),
-                  prefixIcon: const Icon(Icons.location_on_outlined),
-                  counterStyle: TextStyle(color: Colors.grey.shade600),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a location';
-                  }
-                  return null;
-                },
-                maxLength: 100,
-                onChanged: (value) => setState(() {}),
-              ),
+              child: _buildLocationSelection(colorScheme),
             ),
             const SizedBox(height: 24),
 
@@ -932,5 +903,268 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         ],
       ],
     );
+  }
+
+  Widget _buildLocationSelection(ColorScheme colorScheme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Toggle for auto-location vs manual selection
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                _useAutoLocation ? Icons.gps_fixed : Icons.map,
+                color: colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _useAutoLocation
+                      ? 'Auto-detect current location'
+                      : 'Pin location on map',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              Switch(
+                value: _useAutoLocation,
+                onChanged: (value) {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    _useAutoLocation = value;
+                    if (value) {
+                      // Auto-detect location
+                      _setCurrentLocation();
+                    } else {
+                      // Clear location for manual selection
+                      _locationController.clear();
+                      _latitude = null;
+                      _longitude = null;
+                      _wardNumber = null;
+                    }
+                  });
+                },
+                activeColor: colorScheme.primary,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Show different UI based on toggle
+        if (_useAutoLocation) ...[
+          // Auto-location display
+          if (_isDetectingWard)
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text('Detecting your location...'),
+                ],
+              ),
+            )
+          else
+            TextFormField(
+              controller: _locationController,
+              decoration: InputDecoration(
+                hintText: 'Current location will be detected automatically',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.all(16),
+                prefixIcon: const Icon(Icons.gps_fixed),
+                suffixIcon: _locationController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.refresh),
+                        onPressed: _setCurrentLocation,
+                        tooltip: 'Refresh location',
+                      )
+                    : null,
+              ),
+              readOnly: true,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please wait for location detection or switch to manual mode';
+                }
+                return null;
+              },
+            ),
+        ] else ...[
+          // Manual location picker button
+          OutlinedButton.icon(
+            onPressed: _openLocationPicker,
+            icon: const Icon(Icons.map),
+            label: Text(
+              _locationController.text.isEmpty
+                  ? 'Tap to select location on map'
+                  : _locationController.text,
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: colorScheme.primary,
+              side: BorderSide(
+                color: _locationController.text.isEmpty
+                    ? Colors.grey.shade300
+                    : colorScheme.primary,
+                width: _locationController.text.isEmpty ? 1 : 2,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              alignment: Alignment.centerLeft,
+            ),
+          ),
+          if (_locationController.text.isEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: Colors.orange.shade600),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Tap the button above to pin location on map',
+                    style: TextStyle(color: Colors.orange.shade600, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+
+        // Display ward info if available
+        if (_wardNumber != null) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green.shade700, size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Ward $_wardNumber detected',
+                  style: TextStyle(
+                    color: Colors.green.shade700,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Future<void> _openLocationPicker() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LocationPickerScreen(
+          initialLatitude: _latitude,
+          initialLongitude: _longitude,
+        ),
+      ),
+    );
+
+    if (result != null && result is Map<String, dynamic>) {
+      setState(() {
+        _latitude = result['latitude'];
+        _longitude = result['longitude'];
+        _locationController.text = result['address'];
+        _wardNumber = result['wardNumber']; // Get ward number from location picker
+      });
+
+      // Ward detection is already done in location picker, but we can verify/retry if null
+      if (_wardNumber == null && _latitude != null && _longitude != null) {
+        setState(() {
+          _isDetectingWard = true;
+        });
+
+        try {
+          final wardResult = await _wardDetectionService.findWardInBhaktapur(
+            _latitude!,
+            _longitude!,
+          );
+
+          print('Re-trying ward detection: $wardResult');
+
+          if (wardResult['success'] == true) {
+            setState(() {
+              _wardNumber = wardResult['ward']['number'];
+              _isDetectingWard = false;
+            });
+          } else {
+            setState(() {
+              _wardNumber = null;
+              _isDetectingWard = false;
+            });
+            // Show warning to user if ward is null
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Warning: Location outside Bhaktapur. Ward not detected.'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          setState(() {
+            _isDetectingWard = false;
+          });
+          print('Error detecting ward: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Warning: Could not detect ward for this location'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      }
+    }
   }
 }
