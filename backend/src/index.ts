@@ -7,6 +7,7 @@ import heatmapRoutes from "./routes/heatmap";
 import wardsRoutes from "./routes/wards";
 import tagsRoutes from "./routes/tags";
 import priorityDistRoutes from "./routes/priority_dist";
+import postsRoutes from "./routes/posts";
 import {
   adminLogin,
   verifyAdminToken,
@@ -44,6 +45,9 @@ app.get("/api", (req, res) => {
 // Import and use issues routes
 app.use("/api", issuesRoutes);
 
+// Import and use posts routes
+app.use("/api", postsRoutes);
+
 // Import and use heatmap routes
 app.use("/api/heatmap", heatmapRoutes);
 
@@ -61,7 +65,8 @@ app.listen(port, () => {
   console.log(`✅ Server running on port ${port}`);
   console.log(`📊 Health check: http://localhost:${port}/health`);
   console.log(`📊 Issues API: http://localhost:${port}/api/issues`);
-  console.log(`🗺️  Heatmap API: http://localhost:${port}/api/heatmap/all`);
+  console.log(`� Posts API: http://localhost:${port}/api/posts`);
+  console.log(`�🗺️  Heatmap API: http://localhost:${port}/api/heatmap/all`);
   console.log(
     `🗺️  Ward API: http://localhost:${port}/api/heatmap/ward/:wardNumber`
   );
