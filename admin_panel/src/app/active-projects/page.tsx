@@ -1155,7 +1155,7 @@ export default function ActiveProjects() {
                         <button onClick={() => {
                           if (!pendingDeleteProject) return;
                           setProjectsState(prev => prev.filter(p => p.id !== pendingDeleteProject.id));
-                          if (selectedProject?.id === pendingDeleteProject.id) setSelectedProject(null);
+                          if (selectedProject && pendingDeleteProject && (selectedProject as Project).id === pendingDeleteProject.id) setSelectedProject(null);
                           setPendingDeleteProject(null);
                         }} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">Delete</button>
                       </div>
