@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, Fragment } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, CircleMarker, Circle, Polygon } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -89,7 +89,6 @@ const generateIrregularShape = (center: [number, number], baseRadius: number, po
     
     const lat = center[0] + Math.sin(angle) * currentLatOffset;
     const lng = center[1] + Math.cos(angle) * currentLngOffset;
-    
     shape.push([lat, lng]);
   }
   
@@ -379,12 +378,12 @@ export default function HeatmapVisualization({ data, selectedWard }: HeatmapVisu
       
       {/* Render irregular gradient shapes for each issue */}
       {filteredData.map((issue) => (
-        <div key={`issue-${issue.id}`}>
+        <Fragment key={`issue-${issue.id}`}>
           {/* Irregular gradient layers */}
           {createIssueShapes(issue)}
           {/* Enhanced center marker */}
           {createIssueMarker(issue)}
-        </div>
+        </Fragment>
       ))}
       
       {/* Enhanced Priority Legend */}

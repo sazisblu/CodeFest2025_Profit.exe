@@ -129,7 +129,7 @@ export default function HeatmapSection({ onCategoryChange, onWardChange }: Heatm
           <select
             value={selectedCategory}
             onChange={(e) => handleCategoryChange(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 text-blue-700 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
@@ -144,7 +144,7 @@ export default function HeatmapSection({ onCategoryChange, onWardChange }: Heatm
           <select
             value={selectedWard || ''}
             onChange={(e) => handleWardChange(e.target.value ? parseInt(e.target.value) : null)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 text-blue-700 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {wards.map((ward) => (
               <option key={ward.id || 'all'} value={ward.id || ''}>

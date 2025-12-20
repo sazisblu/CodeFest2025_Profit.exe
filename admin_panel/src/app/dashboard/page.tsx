@@ -5,6 +5,7 @@ import { FaCheckCircle, FaClipboardList, FaChartLine } from 'react-icons/fa';
 import Sidebar from '@/components/Sidebar';
 import Topbar from '@/components/Topbar';
 import HeatmapSection from '@/components/HeatmapSection';
+import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
 // Define interfaces for type safety
 interface CategoryData {
@@ -68,6 +69,11 @@ export default function Dashboard() {
   const [priorityData, setPriorityData] = useState<PriorityDistribution | null>(null);
   const [isLoadingPriority, setIsLoadingPriority] = useState(true);
   const [priorityError, setPriorityError] = useState<string | null>(null);
+
+  // State for dynamic dashboard stats
+  const [totalIssues, setTotalIssues] = useState<number>(0);
+  const [highPriorityIssues, setHighPriorityIssues] = useState<number>(0);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   // Default color mapping for categories - memoized to prevent re-renders
   const getColorForCategory = useCallback((categoryName: string): string => {
@@ -215,6 +221,41 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Fetch dashboard statistics
+  const fetchDashboardStats = useCallback(async () => {
+    setIsLoadingStats(true);
+    
+    try {
+      const response = await fetch('http://localhost:5000/api/heatmap/all');
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data: HeatmapResponse = await response.json();
+      
+      if (!data.success) {
+        throw new Error('Failed to fetch issues data');
+      }
+
+      // Count total issues
+      const total = data.issues.length;
+      setTotalIssues(total);
+
+      // Count high priority issues (priority score > 15)
+      const highPriority = data.issues.filter(issue => (issue.priority || 0) > 15).length;
+      setHighPriorityIssues(highPriority);
+      
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      // Keep default values of 0 on error
+      setTotalIssues(0);
+      setHighPriorityIssues(0);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  }, []);
+
   // Auto-rotate designs every 4 seconds
   useEffect(() => {
     const interval = setInterval(() => {
@@ -226,7 +267,8 @@ export default function Dashboard() {
   // Fetch tags on component mount
   useEffect(() => {
     fetchTags();
-  }, []);
+    fetchDashboardStats();
+  }, [fetchTags, fetchDashboardStats]);
 
   // Fetch category data when tags are loaded or when ward changes
   useEffect(() => {
@@ -260,11 +302,7 @@ export default function Dashboard() {
   const design = designs[currentDesign];
 
   // Blue-themed Recent Issues data
-  const recentIssues = [
-    { id: 92, title: 'Large pothole on Main Street', category: 'Road Damage', status: 'Pending', location: '123 Main Street, Downtown', time: 'about 1 year ago' },
-    { id: 88, title: 'Overflowing garbage bins at Central Park', category: 'Waste Management', status: 'In Review', location: 'Central Park, Playground Area', time: 'about 1 year ago' },
-    { id: 65, title: 'Broken street light on Elm Avenue', category: 'Street Light', status: 'Pending', location: '45 Elm Avenue, Residential District', time: 'about 1 year ago' },
-  ];
+  
 
   const statusStyles: Record<string, string> = {
     Pending: 'bg-blue-100 text-blue-700',
@@ -285,140 +323,6 @@ export default function Dashboard() {
           <div className="max-w-7xl mx-auto">
             {/* ONLY DASHBOARD CONTENT - NO SWITCH CASES */}
             <div className="space-y-6">
-              {/* Welcome Hero Section & Stats Cards */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Welcome Square Section - Modern Monitor Design */}
-                <div className="lg:col-span-1">
-                  <div className="relative aspect-square flex flex-col items-center justify-center transition-all duration-500">
-                    {/* Modern LED Monitor */}
-                    <div className="w-full h-4/5 flex flex-col">
-                      <div
-                        className="flex-1 rounded-2xl overflow-hidden border-8 border-slate-600 shadow-2xl relative flex flex-col items-center justify-center p-6"
-                        style={{ background: 'linear-gradient(135deg, #E8F4F8 0%, #F0F9FF 50%, #E0F2FE 100%)' }}
-                      >
-                        {/* Subtle top bezel light */}
-                        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white to-transparent opacity-40"></div>
-                        
-                        {/* Screen Content */}
-                        <div className="w-full h-full flex flex-col items-center justify-center text-center space-y-2">
-                          {/* Status Bar with Dashboard Title */}
-                          <div className="w-full flex justify-between items-center px-4 py-2 mb-2">
-                            <h3 className="text-xl font-bold" style={{color: '#2D3F7B'}}>Dashboard</h3>
-                            <div className="flex gap-1.5">
-                              <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: '#ADD8E6'}}></div>
-                              <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: '#ADD8E6'}}></div>
-                              <div className="w-1.5 h-1.5 rounded-full" style={{backgroundColor: '#ADD8E6'}}></div>
-                            </div>
-                          </div>
-
-                          {/* Modern Mini Chart Visualization */}
-                          <svg className="w-24 h-20" viewBox="0 0 140 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            {/* Grid background */}
-                            <defs>
-                              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#2D3F7B" strokeWidth="0.3" opacity="0.2"/>
-                              </pattern>
-                            </defs>
-                            <rect width="140" height="100" fill="url(#grid)" />
-                            
-                            {/* Modern bars with gradient */}
-                            <rect x="18" y="60" width="14" height="30" fill="#10b981" rx="3" opacity="0.95"/>
-                            <rect x="38" y="40" width="14" height="50" fill="#f59e0b" rx="3" opacity="0.95"/>
-                            <rect x="58" y="20" width="14" height="70" fill="#dc2626" rx="3" opacity="0.95"/>
-                            <rect x="78" y="50" width="14" height="40" fill="#10b981" rx="3" opacity="0.95"/>
-                            <rect x="98" y="30" width="14" height="60" fill="#f59e0b" rx="3" opacity="0.95"/>
-                            <rect x="118" y="55" width="14" height="35" fill="#dc2626" rx="3" opacity="0.95"/>
-                          </svg>
-
-                          <h2 className="text-xl font-bold tracking-tight" style={{color: '#19295C'}}>
-                            {design.title}
-                          </h2>
-                          <p className="text-3xl font-black" style={{color: '#2D3F7B'}}>
-                            {design.subtitle}
-                          </p>
-                          <p className="text-sm font-medium" style={{color: '#2D3F7B', opacity: 0.75}}>
-                            {design.message}
-                          </p>
-
-                          {/* Modern Indicator dots */}
-                          <div className="flex justify-center gap-2 pt-2">
-                            {designs.map((_, idx) => (
-                              <div
-                                key={idx}
-                                className={`rounded-full transition-all duration-300 ${
-                                  idx === currentDesign ? 'bg-blue-600 w-5 h-2' : 'bg-blue-300 w-2 h-2'
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Modern Minimal Stand */}
-                    <div className="w-2 h-8 bg-gradient-to-b from-slate-600 to-slate-500 shadow-lg -mt-1"></div>
-
-                    {/* Sleek Base */}
-                    <div className="w-3/4 h-2 bg-gradient-to-b from-slate-500 to-slate-600 rounded-full shadow-xl"></div>
-
-                    {/* Subtle LED Power Indicator */}
-                    <div className="absolute -bottom-6 right-6">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{boxShadow: '0 0 12px rgba(59, 130, 246, 0.8)'}}></div>
-                    </div>
-                  </div>
-
-                  {/* Button Below Monitor */}
-                  <div className="mt-10 flex justify-center">
-                    <button 
-                      onClick={handleDraftProposal}
-                      className="text-white px-8 py-3 rounded-lg font-semibold transition-all shadow-lg text-base hover:shadow-xl transform hover:scale-105"
-                      style={{backgroundColor: '#2D3F7B'}}
-                      onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#19295C'}
-                      onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = '#2D3F7B'}
-                    >
-                      DRAFT A PROPOSAL
-                    </button>
-                  </div>
-                </div>
-
-                {/* Stats Cards Grid */}
-                <div className="lg:col-span-2">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
-                    <div className="bg-gradient-to-br from-white/90 via-blue-100/45 to-blue-200/30 backdrop-blur-md p-6 rounded-xl shadow-lg border border-blue-200/60">
-                      <div className="flex flex-col items-start gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide" style={{color: '#2D3F7B'}}>Total Issues</p>
-                        <p className="text-4xl font-bold leading-tight text-[#19295C]">128</p>
-                        <p className="text-sm" style={{color: '#19295C', opacity: 0.7}}>All time submissions</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-white/90 via-blue-100/45 to-blue-200/30 backdrop-blur-md p-6 rounded-xl shadow-lg border border-blue-200/60">
-                      <div className="flex flex-col items-start gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide" style={{color: '#2D3F7B'}}>High Priority</p>
-                        <p className="text-4xl font-bold leading-tight text-[#19295C]">15</p>
-                        <p className="text-sm" style={{color: '#19295C', opacity: 0.7}}>Requires immediate attention</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-white/90 via-blue-100/45 to-blue-200/30 backdrop-blur-md p-6 rounded-xl shadow-lg border border-blue-200/60">
-                      <div className="flex flex-col items-start gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide" style={{color: '#2D3F7B'}}>In Progress</p>
-                        <p className="text-4xl font-bold leading-tight text-[#19295C]">42</p>
-                        <p className="text-sm" style={{color: '#19295C', opacity: 0.7}}>Currently being resolved</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-white/90 via-blue-100/45 to-blue-200/30 backdrop-blur-md p-6 rounded-xl shadow-lg border border-blue-200/60">
-                      <div className="flex flex-col items-start gap-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide" style={{color: '#2D3F7B'}}>Resolved</p>
-                        <p className="text-4xl font-bold leading-tight text-[#19295C]">71</p>
-                        <p className="text-sm" style={{color: '#19295C', opacity: 0.7}}>Successfully completed</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
               {/* HEATMAP SECTION */}
               <HeatmapSection />
 
@@ -439,14 +343,14 @@ export default function Dashboard() {
 
                   {/* Ward Filter Dropdown */}
                   <div className="mb-4">
-                    <label htmlFor="ward-select" className="block text-sm font-medium text-slate-700 mb-2">
+                    <label htmlFor="ward-select" className="block text-sm font-medium text-[#000000] mb-2">
                       Filter by Ward:
                     </label>
                     <select
                       id="ward-select"
                       value={selectedWard}
                       onChange={(e) => setSelectedWard(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                      className="block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                      className="block w-full px-3 py-2 border border-blue-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-blue-700 sm:text-sm"
                       disabled={isLoadingCategories}
                     >
                       <option value="all">All Wards</option>
@@ -454,16 +358,13 @@ export default function Dashboard() {
                         <option key={ward} value={ward}>Ward {ward}</option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-slate-500">
-                      This filter applies to both category and priority charts
-                    </p>
                   </div>
 
                   {/* Category Data Display */}
                   <div className="space-y-4">
                     {isLoadingCategories ? (
                       <div className="flex items-center justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        <div className="animate-spin rounded-full h-8 w-8  border-blue-600"></div>
                       </div>
                     ) : categoryError ? (
                       <div className="text-center py-8">
@@ -477,9 +378,17 @@ export default function Dashboard() {
                       </div>
                     ) : categoryData.length === 0 ? (
                       <div className="text-center py-8">
-                        <p className="text-slate-500 text-sm">
+                        <p className="text-blue-500 text-sm">
                           No issues found {selectedWard !== 'all' ? `for Ward ${selectedWard}` : ''}
                         </p>
+                        <div className="flex justify-center mt-4">
+                          <DotLottieReact
+                            src="https://lottie.host/896dad7e-cc05-49b3-a8f6-47d6b6d66469/LRZjW1087j.lottie"
+                            loop
+                            autoplay
+                            style={{ width: 250, height: 250 }}
+                          />
+                        </div>
                       </div>
                     ) : (
                       categoryData.map((category, index) => (
@@ -685,40 +594,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Recent Issues */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                <div className="p-6 border-b border-slate-200">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-slate-900">Recent Issues</h3>
-                    <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">View all</button>
-                  </div>
-                </div>
-                <div className="divide-y divide-slate-200">
-                  {recentIssues.map((issue) => (
-                    <div key={issue.id} className="p-6 hover:bg-slate-50 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h4 className="font-medium text-slate-900">{issue.title}</h4>
-                            <span className={`px-2 py-1 text-xs rounded-full ${statusStyles[issue.status]}`}>
-                              {issue.status}
-                            </span>
-                          </div>
-                          <p className="text-sm text-slate-600 mb-2">
-                            <span className="font-medium text-slate-800">{issue.category}</span> - {issue.location}
-                          </p>
-                          <p className="text-xs text-slate-500">{issue.time}</p>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-3xl font-black" style={{color: '#4e5569ff'}}>
-                            {issue.id}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>

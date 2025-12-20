@@ -82,7 +82,7 @@ router.get("/all", async (req: Request, res: Response) => {
     const { category } = req.query;
 
     console.log(
-      `🗺️ [/api/heatmap/all] Fetching all issues${
+      `🗺️ [/api/heatmap/all] Fetching all xsues${
         category ? ` for category: ${category}` : ""
       }`
     );

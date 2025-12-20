@@ -41,6 +41,9 @@ interface Project {
     author: string;
     avatar: string;
   }[];
+  contractorCompany?: string;
+  bifContractSigned?: string;
+  bifSigned?: boolean;
 }
 
 export default function ActiveProjects() {
@@ -312,9 +315,12 @@ export default function ActiveProjects() {
   const [progressValue, setProgressValue] = useState(0);
   const [showMilestoneModal, setShowMilestoneModal] = useState(false);
   const [milestoneForm, setMilestoneForm] = useState<Partial<Milestone>>({});
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(true);
   const [showReportModal, setShowReportModal] = useState(false);
   const [pendingDeleteProject, setPendingDeleteProject] = useState<Project | null>(null);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [newProjectTitle, setNewProjectTitle] = useState('');
+  const [newProjectForm, setNewProjectForm] = useState<Partial<Project>>({});
 
   const handleLogout = () => {
     router.push('/login');
@@ -428,6 +434,41 @@ export default function ActiveProjects() {
     router.push(`/citizen-proposals?projectId=${project.id}`);
   };
 
+  const createNewProject = () => {
+    if (!newProjectTitle.trim()) return;
+    
+    const newProject: Project = {
+      id: Date.now(),
+      title: newProjectTitle,
+      description: newProjectForm.description || 'New project description',
+      image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=300&h=200&fit=crop',
+      category: newProjectForm.category || 'Infrastructure',
+      categoryColor: 'bg-blue-100 text-blue-700',
+      categoryIcon: '🏗️',
+      status: 'Planning',
+      statusColor: 'bg-gray-100 text-gray-700',
+      progress: 0,
+      budget: newProjectForm.budget || 'Rs. 0 Crores',
+      startDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      endDate: newProjectForm.endDate || 'TBD',
+      location: newProjectForm.location || 'TBD',
+      department: newProjectForm.department || 'General',
+      priority: 'Medium',
+      priorityColor: 'bg-yellow-100 text-yellow-700',
+      teamSize: Number(newProjectForm.teamSize) || 0,
+      milestones: [],
+      recentUpdates: [],
+      contractorCompany: newProjectForm.contractorCompany || '',
+      bifContractSigned: newProjectForm.bifContractSigned || '',
+      bifSigned: newProjectForm.bifSigned || false
+    };
+    
+    setProjectsState(prev => [newProject, ...prev]);
+    setShowNewProjectModal(false);
+    setNewProjectTitle('');
+    setNewProjectForm({});
+  };
+
   // If a project is selected, show the detailed view
   if (selectedProject) {
     return (
@@ -475,8 +516,8 @@ export default function ActiveProjects() {
                     </div>
                     {isAdmin ? (
                       <div className="space-y-2">
-                        <input value={editForm?.title ?? selectedProject.title} onChange={e => setEditForm(prev => ({ ...prev, title: e.target.value }))} className="w-full text-black text-2xl font-bold p-1 rounded" />
-                        <textarea value={editForm?.description ?? selectedProject.description} onChange={e => setEditForm(prev => ({ ...prev, description: e.target.value }))} className="w-full text-black p-2 rounded" />
+                        <input value={editForm?.title ?? selectedProject.title} onChange={e => setEditForm(prev => ({ ...prev, title: e.target.value }))} className="w-full text-white text-2xl font-bold p-1 rounded border-0" />
+                        <textarea value={editForm?.description ?? selectedProject.description} onChange={e => setEditForm(prev => ({ ...prev, description: e.target.value }))} className="w-full text-white p-2 rounded border-0" />
                       </div>
                     ) : (
                       <>
@@ -675,6 +716,56 @@ export default function ActiveProjects() {
                         Make Proposal
                       </button>
                       {/* View Documents button removed per design */}
+                    </div>
+                  </div>
+
+                  {/* Contractor Info */}
+                  <div className="bg-white rounded-2xl shadow-sm border border-app-muted p-6">
+                    <h3 className="text-lg font-semibold text-dark mb-4">Contractor Info</h3>
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <label className="block text-slate-600 mb-1">Company</label>
+                          {isAdmin ? (
+                          <input
+                            value={editForm?.contractorCompany ?? selectedProject.contractorCompany ?? ''}
+                            onChange={e => setEditForm(prev => ({ ...prev, contractorCompany: e.target.value }))}
+                            placeholder="Contractor Company"
+                            className="w-full px-3 py-2 text-blue-700 border border-slate-300 rounded-lg focus:outline-none focus:ring-0 text-sm"
+                          />
+                        ) : (
+                          <span className="text-dark">{selectedProject.contractorCompany ?? '—'}</span>
+                        )}
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-600 mb-1">BIF Contract</label>
+                        {isAdmin ? (
+                          <div className="w-full">
+                            <select
+                              value={(editForm?.bifSigned !== undefined) ? (editForm.bifSigned ? 'signed' : 'unsigned') : (selectedProject.bifContractSigned ? 'signed' : 'unsigned')}
+                              onChange={e => {
+                                const signed = e.target.value === 'signed';
+                                setEditForm(prev => ({ ...prev, bifSigned: signed, bifContractSigned: signed ? (prev?.bifContractSigned ?? prev?.bifContractSigned ?? '') : '' }));
+                              }}
+                              className="w-full px-3 py-2 text-blue-700 border border-slate-200 rounded-lg focus:outline-none focus:ring-0 text-sm mb-2"
+                            >
+                              <option value="signed">Signed</option>
+                              <option value="unsigned">Unsigned</option>
+                            </select>
+
+                            {( (editForm?.bifSigned ?? !!selectedProject.bifContractSigned) ) && (
+                              <input
+                                type="date"
+                                value={editForm?.bifContractSigned ?? selectedProject.bifContractSigned ?? ''}
+                                onChange={e => setEditForm(prev => ({ ...prev, bifContractSigned: e.target.value }))}
+                                className="w-full px-3 py-2 text-blue-700 border border-slate-300 rounded-lg focus:outline-none focus:ring-0 text-sm"
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-dark">{selectedProject.bifContractSigned ? `Signed on ${selectedProject.bifContractSigned}` : 'Unsigned'}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1008,6 +1099,21 @@ export default function ActiveProjects() {
                     }
                   `}</style>
                 </div>
+                
+                {/* Blue Plus Button */}
+                {isAdmin && (
+                  <div className="mt-6 flex justify-center">
+                    <button
+                      onClick={() => setShowNewProjectModal(true)}
+                      className="w-16 h-16 bg-blue-600 hover:bg-blue-700 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+                      title="Create New Project"
+                    >
+                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Scrollable results area: only this block scrolls while search stays sticky */}
@@ -1052,6 +1158,101 @@ export default function ActiveProjects() {
                           if (selectedProject?.id === pendingDeleteProject.id) setSelectedProject(null);
                           setPendingDeleteProject(null);
                         }} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                {/* New Project Modal */}
+                {showNewProjectModal && (
+                  <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+                    <div className="bg-white rounded-xl w-full max-w-2xl p-6">
+                      <h3 className="text-lg font-semibold mb-4 text-slate-900">Create New Project</h3>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-sm font-medium text-[#19295c] mb-1 block">Project Title *</label>
+                          <input 
+                            value={newProjectTitle} 
+                            onChange={e => setNewProjectTitle(e.target.value)} 
+                            placeholder="Enter project title" 
+                            className="w-full border border-slate-200 bg-white text-black placeholder-slate-400 px-3 py-2 rounded" 
+                            autoFocus
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium text-[#19295c] mb-1 block">Description</label>
+                          <textarea 
+                            value={newProjectForm?.description || ''} 
+                            onChange={e => setNewProjectForm(prev => ({ ...prev, description: e.target.value }))} 
+                            placeholder="Project description" 
+                            className="w-full border border-slate-200 bg-white text-black placeholder-slate-400 px-3 py-2 rounded resize-none" 
+                            rows={3}
+                          />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-sm font-medium text-[#19295c] mb-1 block">Budget</label>
+                            <input 
+                              value={newProjectForm?.budget || ''} 
+                              onChange={e => setNewProjectForm(prev => ({ ...prev, budget: e.target.value }))} 
+                              placeholder="Rs. 0 Crores" 
+                              className="w-full border border-slate-200 bg-white text-black placeholder-slate-400 px-3 py-2 rounded" 
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-[#19295c] mb-1 block">Location</label>
+                            <input 
+                              value={newProjectForm?.location || ''} 
+                              onChange={e => setNewProjectForm(prev => ({ ...prev, location: e.target.value }))} 
+                              placeholder="Project location" 
+                              className="w-full border border-slate-200 bg-white text-black placeholder-slate-400 px-3 py-2 rounded" 
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-sm font-medium text-[#19295c] mb-1 block">Department</label>
+                            <input 
+                              value={newProjectForm?.department || ''} 
+                              onChange={e => setNewProjectForm(prev => ({ ...prev, department: e.target.value }))} 
+                              placeholder="Department" 
+                              className="w-full border border-slate-200 bg-white text-black placeholder-slate-400 px-3 py-2 rounded" 
+                            />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-[#19295c] mb-1 block">Team Size</label>
+                            <input 
+                              type="number" 
+                              value={newProjectForm?.teamSize?.toString() || ''} 
+                              onChange={e => setNewProjectForm(prev => ({ ...prev, teamSize: Number(e.target.value) }))} 
+                              placeholder="0" 
+                              className="w-full border border-slate-200 bg-white text-black placeholder-slate-400 px-3 py-2 rounded" 
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="mt-6 flex justify-end gap-3">
+                        <button 
+                          onClick={() => {
+                            setShowNewProjectModal(false);
+                            setNewProjectTitle('');
+                            setNewProjectForm({});
+                          }} 
+                          className="px-4 py-2 rounded border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={createNewProject}
+                          disabled={!newProjectTitle.trim()}
+                          className="px-4 py-2 bg-[#19295c] hover:bg-[#0f1a3b] text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Create Project
+                        </button>
                       </div>
                     </div>
                   </div>
